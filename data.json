@@ -1,0 +1,176 @@
+{
+  "players": {
+    "1": {
+      "uuid": "1",
+      "name": "oplachen0",
+      "cosmetics": [],
+      "friends": []
+    },
+    "2": {
+      "uuid": "2",
+      "name": "K04_Bratan",
+      "cosmetics": [
+        "crown"
+      ],
+      "friends": []
+    },
+    "df035d6f-df63-35d5-a39e-d1a567247ad5": {
+      "uuid": "df035d6f-df63-35d5-a39e-d1a567247ad5",
+      "name": "oplachen0",
+      "cosmetics": [
+        {
+          "id": "halo",
+          "style": "Holy",
+          "colorMode": "Theme",
+          "customColor": -16711905,
+          "scale": 2,
+          "speed": 0.9
+        },
+        {
+          "id": "horns",
+          "style": "Demon",
+          "colorMode": "Custom",
+          "customColor": -57264,
+          "scale": 1.15,
+          "speed": 1
+        },
+        {
+          "id": "visor",
+          "style": "OniMask",
+          "colorMode": "Custom",
+          "customColor": -57264,
+          "scale": 1,
+          "speed": 1
+        },
+        {
+          "id": "vortex",
+          "style": "Singularity",
+          "colorMode": "White",
+          "customColor": -43691,
+          "scale": 2,
+          "speed": 1
+        }
+      ],
+      "friends": []
+    },
+    "bb0cb705-d5cc-3385-92d1-3818abf44583": {
+      "uuid": "bb0cb705-d5cc-3385-92d1-3818abf44583",
+      "name": "K04_Bratan",
+      "cosmetics": [
+        {
+          "id": "wings",
+          "style": "Dragon",
+          "colorMode": "Custom",
+          "customColor": -16711817,
+          "scale": 1.3,
+          "speed": 1
+        },
+        {
+          "id": "tail",
+          "style": "Devil",
+          "colorMode": "Custom",
+          "customColor": -16711817,
+          "scale": 1.15,
+          "speed": 1.1
+        },
+        {
+          "id": "orbs",
+          "style": "Quad",
+          "colorMode": "Custom",
+          "customColor": -16718337,
+          "scale": 1,
+          "speed": 1.2
+        },
+        {
+          "id": "horns",
+          "style": "Dragon",
+          "colorMode": "Custom",
+          "customColor": -16711817,
+          "scale": 1.2,
+          "speed": 1
+        },
+        {
+          "id": "shield",
+          "style": "Spike",
+          "colorMode": "Custom",
+          "customColor": -16711817,
+          "scale": 1.1,
+          "speed": 1
+        },
+        {
+          "id": "aura",
+          "style": "Runic",
+          "colorMode": "Custom",
+          "customColor": -16711817,
+          "scale": 1.1,
+          "speed": 1.2
+        },
+        {
+          "id": "pet",
+          "style": "Cat",
+          "colorMode": "Custom",
+          "customColor": -10496,
+          "scale": 2,
+          "speed": 1
+        },
+        {
+          "id": "crown",
+          "style": "Tiara",
+          "colorMode": "Theme",
+          "customColor": -11141121,
+          "scale": 1.2778928,
+          "speed": 1
+        }
+      ],
+      "friends": []
+    },
+    "7a87a8a2-67ca-4ad8-aa43-f33afca31b26": {
+      "uuid": "7a87a8a2-67ca-4ad8-aa43-f33afca31b26",
+      "name": "HT1",
+      "cosmetics": [
+        {
+          "id": "wings",
+          "style": "Demon",
+          "colorMode": "Custom",
+          "customColor": -57264,
+          "scale": 1.25,
+          "speed": 1.1
+        },
+        {
+          "id": "horns",
+          "style": "Demon",
+          "colorMode": "Custom",
+          "customColor": -57264,
+          "scale": 1.15,
+          "speed": 1
+        },
+        {
+          "id": "visor",
+          "style": "OniMask",
+          "colorMode": "Custom",
+          "customColor": -57264,
+          "scale": 1,
+          "speed": 1
+        },
+        {
+          "id": "aura",
+          "style": "Runic",
+          "colorMode": "Custom",
+          "customColor": -10496,
+          "scale": 1,
+          "speed": 0.8
+        },
+        {
+          "id": "pet",
+          "style": "Dachshund",
+          "colorMode": "Custom",
+          "customColor": -10496,
+          "scale": 2,
+          "speed": 1
+        }
+      ],
+      "friends": []
+    }
+  },
+  "markers": []
+}
