@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3000;
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-version, x-changelog');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-version, x-changelog, x-channel');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
@@ -25,6 +25,7 @@ const USERS_FILE = path.join(__dirname, 'client_users.json');
 const STORAGE_DIR = path.join(__dirname, 'storage');
 const VERSION_FILE = path.join(STORAGE_DIR, 'version.json');
 const JAR_PATH = path.join(STORAGE_DIR, 'Starly-Client-1.21.11.jar');
+const BETA_JAR_PATH = path.join(STORAGE_DIR, 'Starly-Client-1.21.11-beta.jar');
 
 if (!fs.existsSync(STORAGE_DIR)) {
   fs.mkdirSync(STORAGE_DIR, { recursive: true });
@@ -48,7 +49,7 @@ function saveCosmeticsData() {
   }
 }
 
-// 2. Client Users System (user, beta, owner, bans)
+// 2. Client Users System (user, beta, owner, customEarlyAccess, bans)
 let clientUsers = {};
 if (fs.existsSync(USERS_FILE)) {
   try {
@@ -84,13 +85,14 @@ function saveMarkers() {
   }
 }
 
-// 4. OTA Version Data
+// 4. OTA Version Data (Release & Beta Channels)
 let versionData = {
   version: '1.21.11-v1.0.0',
   betaVersion: '1.21.11-v1.0.0-beta',
   changelog: 'Релиз Starly Client 1.21.11: обновленный кастомный хотбар, статус-бары, Modrinth каталог модов.',
-  betaChangelog: 'Бета-версия с экспериментальными оптимизациями и ранними обновлениями.',
-  updatedAt: new Date().toISOString()
+  betaChangelog: 'Бета-версия с экспериментальными функциями и ранними обновлениями.',
+  updatedAt: new Date().toISOString(),
+  betaUpdatedAt: new Date().toISOString()
 };
 
 if (fs.existsSync(VERSION_FILE)) {
@@ -115,6 +117,7 @@ function getOrCreateUser(nickname) {
     clientUsers[key] = {
       name: nickname.trim(),
       role: 'user', // 'user', 'beta', 'owner'
+      customEarlyAccess: false,
       banned: false,
       banReason: '',
       firstSeen: new Date().toISOString(),
@@ -146,22 +149,27 @@ app.get('/api/user/check', (req, res) => {
     });
   }
 
-  // Generate a temporary launcher session token
+  const hasEarlyAccess = u.role === 'beta' || u.role === 'owner' || u.customEarlyAccess;
   const token = 'starly_auth_' + Buffer.from(`${u.name}:${Date.now()}:${u.role}`).toString('base64');
 
   res.json({
     allowed: true,
     banned: false,
     role: u.role,
-    isBeta: u.role === 'beta' || u.role === 'owner',
+    isBeta: u.role === 'beta',
     isOwner: u.role === 'owner',
+    customEarlyAccess: !!u.customEarlyAccess,
+    hasEarlyAccess: !!hasEarlyAccess,
     authToken: token,
-    versionData: (u.role === 'beta' || u.role === 'owner') ? {
+    downloadUrl: (hasEarlyAccess && fs.existsSync(BETA_JAR_PATH)) ? '/api/loader/download-beta' : '/api/loader/download',
+    versionData: hasEarlyAccess ? {
       version: versionData.betaVersion || versionData.version,
-      changelog: versionData.betaChangelog || versionData.changelog
+      changelog: versionData.betaChangelog || versionData.changelog,
+      updatedAt: versionData.betaUpdatedAt || versionData.updatedAt
     } : {
       version: versionData.version,
-      changelog: versionData.changelog
+      changelog: versionData.changelog,
+      updatedAt: versionData.updatedAt
     }
   });
 });
@@ -176,9 +184,19 @@ app.post('/api/user/set-role', (req, res) => {
   if (!nickname || !['user', 'beta', 'owner'].includes(role)) {
     return res.status(400).json({ error: 'Invalid parameters' });
   }
-  const key = nickname.trim().toLowerCase();
   const u = getOrCreateUser(nickname);
   u.role = role;
+  saveClientUsers();
+  res.json({ success: true, user: u });
+});
+
+app.post('/api/user/toggle-early-access', (req, res) => {
+  const { nickname } = req.body;
+  if (!nickname) {
+    return res.status(400).json({ error: 'Nickname required' });
+  }
+  const u = getOrCreateUser(nickname);
+  u.customEarlyAccess = !u.customEarlyAccess;
   saveClientUsers();
   res.json({ success: true, user: u });
 });
@@ -316,14 +334,45 @@ app.post('/api/player', (req, res) => {
 
 // ==================== 4. LOADER OTA API ====================
 app.get('/api/loader/version', (req, res) => {
-  res.json(versionData);
+  const nick = req.query.nickname;
+  if (nick) {
+    const u = getOrCreateUser(nick);
+    const hasEarlyAccess = u.role === 'beta' || u.role === 'owner' || u.customEarlyAccess;
+    if (hasEarlyAccess) {
+      return res.json({
+        version: versionData.betaVersion || versionData.version,
+        changelog: versionData.betaChangelog || versionData.changelog,
+        updatedAt: versionData.betaUpdatedAt || versionData.updatedAt,
+        isBetaChannel: true,
+        downloadUrl: fs.existsSync(BETA_JAR_PATH) ? '/api/loader/download-beta' : '/api/loader/download'
+      });
+    }
+  }
+
+  res.json({
+    version: versionData.version,
+    changelog: versionData.changelog,
+    updatedAt: versionData.updatedAt,
+    isBetaChannel: false,
+    downloadUrl: '/api/loader/download'
+  });
 });
 
 app.get('/api/loader/download', (req, res) => {
   if (fs.existsSync(JAR_PATH)) {
     res.download(JAR_PATH, 'Starly-Client-1.21.11.jar');
   } else {
-    res.status(404).json({ error: 'Client jar not uploaded yet' });
+    res.status(404).json({ error: 'Client release jar not uploaded yet' });
+  }
+});
+
+app.get('/api/loader/download-beta', (req, res) => {
+  if (fs.existsSync(BETA_JAR_PATH)) {
+    res.download(BETA_JAR_PATH, 'Starly-Client-1.21.11-beta.jar');
+  } else if (fs.existsSync(JAR_PATH)) {
+    res.download(JAR_PATH, 'Starly-Client-1.21.11.jar');
+  } else {
+    res.status(404).json({ error: 'Beta jar not uploaded yet' });
   }
 });
 
@@ -331,16 +380,24 @@ app.get('/api/loader/download', (req, res) => {
 app.post('/api/loader/upload-raw', (req, res) => {
   const version = req.headers['x-version'] || versionData.version;
   const changelog = req.headers['x-changelog'] ? decodeURIComponent(req.headers['x-changelog']) : versionData.changelog;
+  const channel = req.headers['x-channel'] || 'release';
 
-  const fileStream = fs.createWriteStream(JAR_PATH);
+  const targetPath = channel === 'beta' ? BETA_JAR_PATH : JAR_PATH;
+  const fileStream = fs.createWriteStream(targetPath);
   req.pipe(fileStream);
 
   fileStream.on('finish', () => {
-    versionData.version = version;
-    versionData.changelog = changelog;
-    versionData.updatedAt = new Date().toISOString();
+    if (channel === 'beta') {
+      versionData.betaVersion = version;
+      versionData.betaChangelog = changelog;
+      versionData.betaUpdatedAt = new Date().toISOString();
+    } else {
+      versionData.version = version;
+      versionData.changelog = changelog;
+      versionData.updatedAt = new Date().toISOString();
+    }
     saveVersion();
-    res.json({ success: true, message: 'Jar updated successfully', versionData });
+    res.json({ success: true, message: `Jar updated in channel ${channel}`, versionData });
   });
 
   fileStream.on('error', (err) => {
@@ -363,6 +420,7 @@ app.post('/api/loader/upload', (req, res) => {
 
       let newVersion = versionData.version;
       let newChangelog = versionData.changelog;
+      let channel = 'release';
       let jarBuffer = null;
 
       for (const part of parts) {
@@ -372,6 +430,9 @@ app.post('/api/loader/upload', (req, res) => {
         } else if (part.includes('name="changelog"')) {
           const m = part.match(/\r\n\r\n([\s\S]*?)\r\n/);
           if (m) newChangelog = m[1].trim();
+        } else if (part.includes('name="channel"')) {
+          const m = part.match(/\r\n\r\n([\s\S]*?)\r\n/);
+          if (m) channel = m[1].trim();
         } else if (part.includes('name="clientJar"') && part.includes('filename=')) {
           const headerEnd = part.indexOf('\r\n\r\n');
           if (headerEnd !== -1) {
@@ -382,21 +443,29 @@ app.post('/api/loader/upload', (req, res) => {
         }
       }
 
+      const targetPath = channel === 'beta' ? BETA_JAR_PATH : JAR_PATH;
+
       if (jarBuffer && jarBuffer.length > 100) {
-        fs.writeFileSync(JAR_PATH, jarBuffer);
+        fs.writeFileSync(targetPath, jarBuffer);
       }
 
-      versionData.version = newVersion;
-      versionData.changelog = newChangelog;
-      versionData.updatedAt = new Date().toISOString();
+      if (channel === 'beta') {
+        versionData.betaVersion = newVersion;
+        versionData.betaChangelog = newChangelog;
+        versionData.betaUpdatedAt = new Date().toISOString();
+      } else {
+        versionData.version = newVersion;
+        versionData.changelog = newChangelog;
+        versionData.updatedAt = new Date().toISOString();
+      }
       saveVersion();
     }
 
-    res.redirect('/?success=1');
+    res.redirect(`/?success=1&channel=${encodeURIComponent(req.query.channel || '1')}`);
   });
 });
 
-// ==================== 5. ADMIN WEB PANEL WITH USERS TAB ====================
+// ==================== 5. ADMIN WEB PANEL ====================
 app.get(['/', '/admin'], (req, res) => {
   const hasJar = fs.existsSync(JAR_PATH);
   let jarSize = 'Не загружен';
@@ -405,9 +474,17 @@ app.get(['/', '/admin'], (req, res) => {
     jarSize = (st.size / (1024 * 1024)).toFixed(2) + ' MB';
   }
 
+  const hasBetaJar = fs.existsSync(BETA_JAR_PATH);
+  let betaJarSize = 'Не загружен';
+  if (hasBetaJar) {
+    const st = fs.statSync(BETA_JAR_PATH);
+    betaJarSize = (st.size / (1024 * 1024)).toFixed(2) + ' MB';
+  }
+
   const userList = Object.values(clientUsers);
   const totalUsers = userList.length;
   const betaCount = userList.filter(u => u.role === 'beta').length;
+  const customCount = userList.filter(u => u.customEarlyAccess).length;
   const bannedCount = userList.filter(u => u.banned).length;
 
   res.send(`<!DOCTYPE html>
@@ -430,7 +507,7 @@ app.get(['/', '/admin'], (req, res) => {
       justify-content: center;
       padding: 30px 20px;
     }
-    .wrapper { width: 100%; max-width: 900px; display: flex; flex-direction: column; gap: 20px; }
+    .wrapper { width: 100%; max-width: 950px; display: flex; flex-direction: column; gap: 20px; }
     .card {
       background: rgba(22, 25, 38, 0.85);
       backdrop-filter: blur(30px);
@@ -480,20 +557,27 @@ app.get(['/', '/admin'], (req, res) => {
       color: #95a5a6;
       cursor: pointer;
     }
+    
+    .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
     .btn {
       width: 100%;
-      padding: 13px;
-      background: linear-gradient(135deg, #5c7cfa 0%, #845ef7 100%);
+      padding: 14px;
       border: none;
       border-radius: 10px;
       color: #fff;
-      font-size: 14px;
-      font-weight: 700;
+      font-size: 13.5px;
+      font-weight: 800;
       cursor: pointer;
-      box-shadow: 0 6px 20px rgba(92, 124, 250, 0.35);
       transition: 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
     .btn:hover { transform: translateY(-2px); }
+    .btn-release { background: linear-gradient(135deg, #5c7cfa 0%, #3b5bdb 100%); box-shadow: 0 6px 20px rgba(92, 124, 250, 0.35); }
+    .btn-beta-pub { background: linear-gradient(135deg, #f59f00 0%, #d9480f 100%); box-shadow: 0 6px 20px rgba(245, 159, 0, 0.35); color: #fff; }
+
     .alert { background: rgba(46, 213, 115, 0.15); border: 1px solid rgba(46, 213, 115, 0.3); color: #2ed573; padding: 12px; border-radius: 10px; font-size: 13px; margin-bottom: 20px; font-weight: 600; text-align: center; }
 
     /* Users table */
@@ -508,8 +592,10 @@ app.get(['/', '/admin'], (req, res) => {
     .status-banned { color: #ff6b6b; font-weight: 700; }
     .status-active { color: #51cf66; font-weight: 600; }
     
-    .action-btn { padding: 5px 10px; font-size: 11px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; transition: 0.15s; margin-right: 4px; }
+    .action-btn { padding: 5px 10px; font-size: 11px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; transition: 0.15s; margin-right: 4px; margin-bottom: 2px; }
     .btn-beta { background: #ffd43b; color: #1e1e24; }
+    .btn-early { background: #e056fd; color: #fff; }
+    .btn-early-active { background: #4834d4; color: #fff; }
     .btn-ban { background: #ff6b6b; color: #fff; }
     .btn-unban { background: #51cf66; color: #fff; }
     .btn-user { background: #868e96; color: #fff; }
@@ -519,8 +605,8 @@ app.get(['/', '/admin'], (req, res) => {
   <div class="wrapper">
     <div class="card">
       <div class="header">
-        <h1 class="title">✦ Starly Client Dashboard</h1>
-        <span class="badge">Сервер онлайн</span>
+        <h1 class="title">✦ Starly Client Cloud Hub</h1>
+        <span class="badge">Онлайн</span>
       </div>
 
       <div class="nav-tabs">
@@ -530,50 +616,59 @@ app.get(['/', '/admin'], (req, res) => {
 
       <!-- TAB 1: UPDATES -->
       <div id="tab-updates">
-        ${req.query.success ? '<div class="alert">✓ Обновление успешно опубликовано для игроков!</div>' : ''}
+        ${req.query.success ? '<div class="alert">✓ Обновление успешно загружено и опубликовано!</div>' : ''}
         <div class="stats-grid">
           <div class="stat-item">
-            <div class="stat-label">Версия клиента:</div>
-            <div class="stat-val">${versionData.version}</div>
+            <div class="stat-label">Релизная версия:</div>
+            <div class="stat-val" style="color: #748ffc;">${versionData.version} (${jarSize})</div>
           </div>
           <div class="stat-item">
-            <div class="stat-label">Размер JAR:</div>
-            <div class="stat-val">${jarSize}</div>
+            <div class="stat-label">Бета версия:</div>
+            <div class="stat-val" style="color: #ffd43b;">${versionData.betaVersion || '—'} (${betaJarSize})</div>
           </div>
           <div class="stat-item">
             <div class="stat-label">Всего игроков:</div>
-            <div class="stat-val" style="color: #748ffc;">${totalUsers}</div>
+            <div class="stat-val">${totalUsers}</div>
           </div>
           <div class="stat-item">
             <div class="stat-label">Бета-тестеров:</div>
-            <div class="stat-val" style="color: #ffd43b;">${betaCount}</div>
+            <div class="stat-val" style="color: #ffd43b;">${betaCount} (персонально: ${customCount})</div>
           </div>
         </div>
 
-        <form action="/api/loader/upload" method="POST" enctype="multipart/form-data">
+        <form id="uploadForm" action="/api/loader/upload" method="POST" enctype="multipart/form-data">
+          <input type="hidden" name="channel" id="targetChannelInput" value="release">
+
           <div class="field">
             <label>Файл обновления клиента (.jar)</label>
             <input type="file" name="clientJar" accept=".jar" required>
           </div>
 
           <div class="field">
-            <label>Номер версии (например: 1.21.11-v1.0.1)</label>
-            <input type="text" name="version" value="${versionData.version}" required>
+            <label>Номер версии (например: 1.21.11-v1.0.1 или 1.21.11-v1.0.1-beta)</label>
+            <input type="text" name="version" id="versionInput" value="${versionData.version}" required>
           </div>
 
           <div class="field">
             <label>Список изменений (Changelog)</label>
-            <textarea name="changelog" rows="3">${versionData.changelog || ''}</textarea>
+            <textarea name="changelog" id="changelogInput" rows="3">${versionData.changelog || ''}</textarea>
           </div>
 
-          <button type="submit" class="btn">ОПУБЛИКОВАТЬ ОБНОВЛЕНИЕ</button>
+          <div class="btn-group">
+            <button type="button" class="btn btn-release" onclick="submitUpload('release')">
+              🚀 ОПУБЛИКОВАТЬ (ДЛЯ ВСЕХ)
+            </button>
+            <button type="button" class="btn btn-beta-pub" onclick="submitUpload('beta')">
+              ⚡ ОПУБЛИКОВАТЬ ДЛЯ BETA-ЮЗЕРОВ
+            </button>
+          </div>
         </form>
       </div>
 
       <!-- TAB 2: USERS -->
       <div id="tab-users" style="display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-          <h3 style="font-size: 16px; font-weight: 700;">Управление пользователями Starly Client</h3>
+          <h3 style="font-size: 16px; font-weight: 700;">Управление игроками и доступом к апдейтам</h3>
           <div style="font-size: 12px; color: #95a5a6;">Забанено: <b style="color: #ff6b6b;">${bannedCount}</b></div>
         </div>
 
@@ -583,13 +678,14 @@ app.get(['/', '/admin'], (req, res) => {
               <tr>
                 <th>Никнейм</th>
                 <th>Роль</th>
+                <th>Доступ к апдейтам</th>
                 <th>Статус</th>
                 <th>Причина бана</th>
                 <th>Действия</th>
               </tr>
             </thead>
             <tbody>
-              ${userList.length === 0 ? '<tr><td colspan="5" style="text-align: center; color: #868e96; padding: 24px;">Пока нет зарегистрированных игроков. Они появятся при первом запуске клиента.</td></tr>' : ''}
+              ${userList.length === 0 ? '<tr><td colspan="6" style="text-align: center; color: #868e96; padding: 24px;">Пока нет зарегистрированных игроков. Они появятся при первом запуске клиента.</td></tr>' : ''}
               ${userList.map(u => `
                 <tr>
                   <td><b>${u.name}</b></td>
@@ -597,6 +693,13 @@ app.get(['/', '/admin'], (req, res) => {
                     <span class="role-badge role-${u.role}">
                       ${u.role === 'owner' ? '👑 Владелец' : (u.role === 'beta' ? '⚡ Beta-юзер' : '👤 Юзер')}
                     </span>
+                  </td>
+                  <td>
+                    ${u.role === 'owner' || u.role === 'beta' 
+                      ? '<span style="color: #ffd43b; font-weight: 700; font-size: 12px;">⚡ Все бета-апдейты</span>' 
+                      : (u.customEarlyAccess 
+                          ? '<span style="color: #e056fd; font-weight: 700; font-size: 12px;">🎁 Персональный апдейт</span>' 
+                          : '<span style="color: #95a5a6; font-size: 12px;">Только релиз</span>')}
                   </td>
                   <td>
                     ${u.banned ? '<span class="status-banned">✖ Забанен</span>' : '<span class="status-active">✓ Активен</span>'}
@@ -608,6 +711,10 @@ app.get(['/', '/admin'], (req, res) => {
                         ? `<button class="action-btn btn-user" onclick="setRole('${u.name}', 'user')">Снять Бету</button>` 
                         : `<button class="action-btn btn-beta" onclick="setRole('${u.name}', 'beta')">★ Дать Бету</button>`}
                       
+                      ${u.customEarlyAccess 
+                        ? `<button class="action-btn btn-early-active" onclick="toggleEarlyAccess('${u.name}')">✓ Выдан апдейт</button>` 
+                        : `<button class="action-btn btn-early" onclick="toggleEarlyAccess('${u.name}')">🎁 Выдать апдейт</button>`}
+
                       ${u.banned 
                         ? `<button class="action-btn btn-unban" onclick="unbanUser('${u.name}')">Разбанить</button>` 
                         : `<button class="action-btn btn-ban" onclick="banUser('${u.name}')">Забанить</button>`}
@@ -631,12 +738,31 @@ app.get(['/', '/admin'], (req, res) => {
       event.target.classList.add('active');
     }
 
+    function submitUpload(channel) {
+      document.getElementById('targetChannelInput').value = channel;
+      const form = document.getElementById('uploadForm');
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+      form.submit();
+    }
+
     async function setRole(nickname, role) {
       if (!confirm('Изменить роль для ' + nickname + ' на ' + role + '?')) return;
       const res = await fetch('/api/user/set-role', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nickname, role })
+      });
+      if (res.ok) location.reload();
+    }
+
+    async function toggleEarlyAccess(nickname) {
+      const res = await fetch('/api/user/toggle-early-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname })
       });
       if (res.ok) location.reload();
     }
