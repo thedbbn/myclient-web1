@@ -21,6 +21,7 @@ app.use(express.raw({ type: 'application/octet-stream', limit: '150mb' }));
 
 const DATA_FILE = path.join(__dirname, 'data.json');
 const MARKERS_FILE = path.join(__dirname, 'markers.json');
+const USERS_FILE = path.join(__dirname, 'client_users.json');
 const STORAGE_DIR = path.join(__dirname, 'storage');
 const VERSION_FILE = path.join(STORAGE_DIR, 'version.json');
 const JAR_PATH = path.join(STORAGE_DIR, 'Starly-Client-1.21.11.jar');
@@ -30,24 +31,42 @@ if (!fs.existsSync(STORAGE_DIR)) {
 }
 
 // 1. Cosmetics & Player Data
-let users = {};
+let cosmeticsData = {};
 if (fs.existsSync(DATA_FILE)) {
   try {
-    users = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    cosmeticsData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
   } catch (e) {
-    users = {};
+    cosmeticsData = {};
   }
 }
 
-function saveData() {
+function saveCosmeticsData() {
   try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(users, null, 2), 'utf8');
+    fs.writeFileSync(DATA_FILE, JSON.stringify(cosmeticsData, null, 2), 'utf8');
   } catch (e) {
     console.error('Error saving data.json:', e);
   }
 }
 
-// 2. Friend Markers Storage
+// 2. Client Users System (user, beta, owner, bans)
+let clientUsers = {};
+if (fs.existsSync(USERS_FILE)) {
+  try {
+    clientUsers = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+  } catch (e) {
+    clientUsers = {};
+  }
+}
+
+function saveClientUsers() {
+  try {
+    fs.writeFileSync(USERS_FILE, JSON.stringify(clientUsers, null, 2), 'utf8');
+  } catch (e) {
+    console.error('Error saving client_users.json:', e);
+  }
+}
+
+// 3. Friend Markers Storage
 let markers = [];
 if (fs.existsSync(MARKERS_FILE)) {
   try {
@@ -65,10 +84,12 @@ function saveMarkers() {
   }
 }
 
-// 3. OTA Version Data
+// 4. OTA Version Data
 let versionData = {
   version: '1.21.11-v1.0.0',
+  betaVersion: '1.21.11-v1.0.0-beta',
   changelog: 'Релиз Starly Client 1.21.11: обновленный кастомный хотбар, статус-бары, Modrinth каталог модов.',
+  betaChangelog: 'Бета-версия с экспериментальными оптимизациями и ранними обновлениями.',
   updatedAt: new Date().toISOString()
 };
 
@@ -86,14 +107,113 @@ function saveVersion() {
   }
 }
 
+// Helper: Ensure user exists and get info
+function getOrCreateUser(nickname) {
+  if (!nickname) return null;
+  const key = nickname.trim().toLowerCase();
+  if (!clientUsers[key]) {
+    clientUsers[key] = {
+      name: nickname.trim(),
+      role: 'user', // 'user', 'beta', 'owner'
+      banned: false,
+      banReason: '',
+      firstSeen: new Date().toISOString(),
+      lastSeen: new Date().toISOString()
+    };
+    saveClientUsers();
+  } else {
+    clientUsers[key].name = nickname.trim();
+    clientUsers[key].lastSeen = new Date().toISOString();
+    saveClientUsers();
+  }
+  return clientUsers[key];
+}
+
+// ==================== USER CHECK & AUTH API ====================
+app.get('/api/user/check', (req, res) => {
+  const nick = req.query.nickname;
+  if (!nick) {
+    return res.status(400).json({ allowed: false, error: 'Nickname required' });
+  }
+
+  const u = getOrCreateUser(nick);
+  if (u.banned) {
+    return res.json({
+      allowed: false,
+      banned: true,
+      reason: u.banReason || 'Нарушение правил использования клиента',
+      message: `Вы забанены в клиенте: ${u.banReason || 'Без указания причины'}`
+    });
+  }
+
+  // Generate a temporary launcher session token
+  const token = 'starly_auth_' + Buffer.from(`${u.name}:${Date.now()}:${u.role}`).toString('base64');
+
+  res.json({
+    allowed: true,
+    banned: false,
+    role: u.role,
+    isBeta: u.role === 'beta' || u.role === 'owner',
+    isOwner: u.role === 'owner',
+    authToken: token,
+    versionData: (u.role === 'beta' || u.role === 'owner') ? {
+      version: versionData.betaVersion || versionData.version,
+      changelog: versionData.betaChangelog || versionData.changelog
+    } : {
+      version: versionData.version,
+      changelog: versionData.changelog
+    }
+  });
+});
+
+// Admin endpoints for user management
+app.get('/api/users', (req, res) => {
+  res.json(Object.values(clientUsers));
+});
+
+app.post('/api/user/set-role', (req, res) => {
+  const { nickname, role } = req.body;
+  if (!nickname || !['user', 'beta', 'owner'].includes(role)) {
+    return res.status(400).json({ error: 'Invalid parameters' });
+  }
+  const key = nickname.trim().toLowerCase();
+  const u = getOrCreateUser(nickname);
+  u.role = role;
+  saveClientUsers();
+  res.json({ success: true, user: u });
+});
+
+app.post('/api/user/ban', (req, res) => {
+  const { nickname, reason } = req.body;
+  if (!nickname) {
+    return res.status(400).json({ error: 'Nickname required' });
+  }
+  const u = getOrCreateUser(nickname);
+  u.banned = true;
+  u.banReason = reason || 'Заблокирован администратором';
+  saveClientUsers();
+  res.json({ success: true, user: u });
+});
+
+app.post('/api/user/unban', (req, res) => {
+  const { nickname } = req.body;
+  if (!nickname) {
+    return res.status(400).json({ error: 'Nickname required' });
+  }
+  const u = getOrCreateUser(nickname);
+  u.banned = false;
+  u.banReason = '';
+  saveClientUsers();
+  res.json({ success: true, user: u });
+});
+
 // ==================== 1. COSMETICS API ====================
 app.get('/api/cosmetics/:id', (req, res) => {
   const id = req.params.id.toLowerCase();
-  // Find by uuid, name or direct key
-  let match = users[id];
+  let match = cosmeticsData[id];
   if (!match) {
-    for (const key of Object.keys(users)) {
-      const u = users[key];
+    for (const key of Object.keys(cosmeticsData)) {
+      const u = cosmeticsData[key];
       if (key.toLowerCase() === id || (u.name && u.name.toLowerCase() === id) || (u.uuid && u.uuid.toLowerCase() === id)) {
         match = u;
         break;
@@ -114,7 +234,7 @@ app.post('/api/cosmetics', (req, res) => {
   const name = (body.name || '').toLowerCase();
   const key = uuid || name || 'unknown';
 
-  users[key] = {
+  cosmeticsData[key] = {
     uuid: body.uuid || '',
     name: body.name || '',
     cosmetics: body.cosmetics || (Array.isArray(body) ? body : []),
@@ -122,11 +242,15 @@ app.post('/api/cosmetics', (req, res) => {
   };
 
   if (name && name !== key) {
-    users[name] = users[key];
+    cosmeticsData[name] = cosmeticsData[key];
   }
 
-  saveData();
-  res.json({ success: true, count: Object.keys(users).length });
+  if (body.name) {
+    getOrCreateUser(body.name);
+  }
+
+  saveCosmeticsData();
+  res.json({ success: true, count: Object.keys(cosmeticsData).length });
 });
 
 // ==================== 2. FRIEND MARKERS API ====================
@@ -145,7 +269,6 @@ app.post('/api/markers', (req, res) => {
     createdAt: Date.now()
   };
 
-  // Clean old markers older than 3 minutes
   const now = Date.now();
   markers = markers.filter(item => (now - item.createdAt) < 180000);
   markers.push(newMarker);
@@ -157,7 +280,6 @@ app.post('/api/markers', (req, res) => {
 app.get('/api/markers/:id', (req, res) => {
   const id = req.params.id.toLowerCase();
   const now = Date.now();
-  // Filter active markers shared with this user or owner
   const active = markers.filter(m => {
     if (now - m.createdAt > 180000) return false;
     if (m.owner && m.owner.toLowerCase() === id) return true;
@@ -274,7 +396,7 @@ app.post('/api/loader/upload', (req, res) => {
   });
 });
 
-// ==================== 5. ADMIN WEB PANEL ====================
+// ==================== 5. ADMIN WEB PANEL WITH USERS TAB ====================
 app.get(['/', '/admin'], (req, res) => {
   const hasJar = fs.existsSync(JAR_PATH);
   let jarSize = 'Не загружен';
@@ -283,8 +405,10 @@ app.get(['/', '/admin'], (req, res) => {
     jarSize = (st.size / (1024 * 1024)).toFixed(2) + ' MB';
   }
 
-  const cosmeticsCount = Object.keys(users).length;
-  const activeMarkersCount = markers.length;
+  const userList = Object.values(clientUsers);
+  const totalUsers = userList.length;
+  const betaCount = userList.filter(u => u.role === 'beta').length;
+  const bannedCount = userList.filter(u => u.banned).length;
 
   res.send(`<!DOCTYPE html>
 <html lang="ru">
@@ -297,30 +421,36 @@ app.get(['/', '/admin'], (req, res) => {
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Inter', sans-serif;
-      background: radial-gradient(circle at 80% 20%, rgba(224, 86, 253, 0.14) 0%, transparent 40%),
-                  radial-gradient(circle at 20% 80%, rgba(255, 71, 87, 0.14) 0%, transparent 45%),
+      background: radial-gradient(circle at 80% 20%, rgba(92, 124, 250, 0.12) 0%, transparent 40%),
+                  radial-gradient(circle at 20% 80%, rgba(224, 86, 253, 0.1) 0%, transparent 45%),
                   #0c0e14;
       color: #f5f6fa;
       min-height: 100vh;
       display: flex;
-      align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 30px 20px;
     }
+    .wrapper { width: 100%; max-width: 900px; display: flex; flex-direction: column; gap: 20px; }
     .card {
-      width: 100%;
-      max-width: 580px;
       background: rgba(22, 25, 38, 0.85);
       backdrop-filter: blur(30px);
       border: 1px solid rgba(255, 255, 255, 0.09);
       border-radius: 18px;
-      padding: 32px;
+      padding: 28px;
       box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
     }
-    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
-    .title { font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px; }
-    .badge { font-size: 11px; font-weight: 700; background: rgba(255, 71, 87, 0.15); color: #ff6b81; padding: 4px 10px; border-radius: 99px; border: 1px solid rgba(255, 71, 87, 0.3); }
-    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 22px; }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .title { font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 10px; }
+    .badge { font-size: 11px; font-weight: 700; background: rgba(92, 124, 250, 0.15); color: #748ffc; padding: 4px 12px; border-radius: 99px; border: 1px solid rgba(92, 124, 250, 0.3); }
+    
+    .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 14px; }
+    .nav-btn {
+      background: transparent; border: none; color: #95a5a6; font-weight: 600; font-size: 14px; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: 0.2s;
+    }
+    .nav-btn.active, .nav-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+    .nav-btn.active { background: #5c7cfa; color: #fff; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 22px; }
     .stat-item {
       background: rgba(255, 255, 255, 0.04);
       border: 1px solid rgba(255, 255, 255, 0.07);
@@ -328,10 +458,11 @@ app.get(['/', '/admin'], (req, res) => {
       padding: 14px;
     }
     .stat-label { font-size: 11.5px; color: #95a5a6; margin-bottom: 4px; font-weight: 500; }
-    .stat-val { font-size: 14.5px; font-weight: 700; color: #fff; }
+    .stat-val { font-size: 15px; font-weight: 700; color: #fff; }
+
     .field { margin-bottom: 18px; display: flex; flex-direction: column; gap: 7px; }
     label { font-size: 12.5px; font-weight: 600; color: #95a5a6; }
-    input[type="text"], textarea {
+    input[type="text"], textarea, select {
       background: rgba(14, 16, 24, 0.9);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 10px;
@@ -351,69 +482,186 @@ app.get(['/', '/admin'], (req, res) => {
     }
     .btn {
       width: 100%;
-      padding: 14px;
-      background: linear-gradient(135deg, #ff4757 0%, #e056fd 100%);
+      padding: 13px;
+      background: linear-gradient(135deg, #5c7cfa 0%, #845ef7 100%);
       border: none;
       border-radius: 10px;
       color: #fff;
-      font-size: 14.5px;
-      font-weight: 800;
+      font-size: 14px;
+      font-weight: 700;
       cursor: pointer;
-      margin-top: 10px;
-      box-shadow: 0 8px 25px rgba(255, 71, 87, 0.35);
-      transition: transform 0.15s;
+      box-shadow: 0 6px 20px rgba(92, 124, 250, 0.35);
+      transition: 0.15s;
     }
     .btn:hover { transform: translateY(-2px); }
     .alert { background: rgba(46, 213, 115, 0.15); border: 1px solid rgba(46, 213, 115, 0.3); color: #2ed573; padding: 12px; border-radius: 10px; font-size: 13px; margin-bottom: 20px; font-weight: 600; text-align: center; }
+
+    /* Users table */
+    .table-box { width: 100%; overflow-x: auto; margin-top: 10px; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+    th { padding: 12px; background: rgba(255, 255, 255, 0.04); color: #95a5a6; font-weight: 600; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+    td { padding: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+    .role-badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+    .role-user { background: rgba(255, 255, 255, 0.08); color: #ced4da; }
+    .role-beta { background: rgba(255, 212, 59, 0.15); color: #ffd43b; border: 1px solid rgba(255, 212, 59, 0.3); }
+    .role-owner { background: rgba(255, 107, 107, 0.15); color: #ff6b6b; border: 1px solid rgba(255, 107, 107, 0.3); }
+    .status-banned { color: #ff6b6b; font-weight: 700; }
+    .status-active { color: #51cf66; font-weight: 600; }
+    
+    .action-btn { padding: 5px 10px; font-size: 11px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; transition: 0.15s; margin-right: 4px; }
+    .btn-beta { background: #ffd43b; color: #1e1e24; }
+    .btn-ban { background: #ff6b6b; color: #fff; }
+    .btn-unban { background: #51cf66; color: #fff; }
+    .btn-user { background: #868e96; color: #fff; }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="header">
-      <h1 class="title">✦ Starly Cloud Hub</h1>
-      <span class="badge">Онлайн</span>
+  <div class="wrapper">
+    <div class="card">
+      <div class="header">
+        <h1 class="title">✦ Starly Client Dashboard</h1>
+        <span class="badge">Сервер онлайн</span>
+      </div>
+
+      <div class="nav-tabs">
+        <button class="nav-btn active" onclick="switchTab('updates')">📦 Обновления (OTA)</button>
+        <button class="nav-btn" onclick="switchTab('users')">👥 Пользователи (${totalUsers})</button>
+      </div>
+
+      <!-- TAB 1: UPDATES -->
+      <div id="tab-updates">
+        ${req.query.success ? '<div class="alert">✓ Обновление успешно опубликовано для игроков!</div>' : ''}
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-label">Версия клиента:</div>
+            <div class="stat-val">${versionData.version}</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Размер JAR:</div>
+            <div class="stat-val">${jarSize}</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Всего игроков:</div>
+            <div class="stat-val" style="color: #748ffc;">${totalUsers}</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Бета-тестеров:</div>
+            <div class="stat-val" style="color: #ffd43b;">${betaCount}</div>
+          </div>
+        </div>
+
+        <form action="/api/loader/upload" method="POST" enctype="multipart/form-data">
+          <div class="field">
+            <label>Файл обновления клиента (.jar)</label>
+            <input type="file" name="clientJar" accept=".jar" required>
+          </div>
+
+          <div class="field">
+            <label>Номер версии (например: 1.21.11-v1.0.1)</label>
+            <input type="text" name="version" value="${versionData.version}" required>
+          </div>
+
+          <div class="field">
+            <label>Список изменений (Changelog)</label>
+            <textarea name="changelog" rows="3">${versionData.changelog || ''}</textarea>
+          </div>
+
+          <button type="submit" class="btn">ОПУБЛИКОВАТЬ ОБНОВЛЕНИЕ</button>
+        </form>
+      </div>
+
+      <!-- TAB 2: USERS -->
+      <div id="tab-users" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <h3 style="font-size: 16px; font-weight: 700;">Управление пользователями Starly Client</h3>
+          <div style="font-size: 12px; color: #95a5a6;">Забанено: <b style="color: #ff6b6b;">${bannedCount}</b></div>
+        </div>
+
+        <div class="table-box">
+          <table>
+            <thead>
+              <tr>
+                <th>Никнейм</th>
+                <th>Роль</th>
+                <th>Статус</th>
+                <th>Причина бана</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${userList.length === 0 ? '<tr><td colspan="5" style="text-align: center; color: #868e96; padding: 24px;">Пока нет зарегистрированных игроков. Они появятся при первом запуске клиента.</td></tr>' : ''}
+              ${userList.map(u => `
+                <tr>
+                  <td><b>${u.name}</b></td>
+                  <td>
+                    <span class="role-badge role-${u.role}">
+                      ${u.role === 'owner' ? '👑 Владелец' : (u.role === 'beta' ? '⚡ Beta-юзер' : '👤 Юзер')}
+                    </span>
+                  </td>
+                  <td>
+                    ${u.banned ? '<span class="status-banned">✖ Забанен</span>' : '<span class="status-active">✓ Активен</span>'}
+                  </td>
+                  <td style="color: #95a5a6; font-size: 11.5px;">${u.banReason || '—'}</td>
+                  <td>
+                    ${u.role !== 'owner' ? `
+                      ${u.role === 'beta' 
+                        ? `<button class="action-btn btn-user" onclick="setRole('${u.name}', 'user')">Снять Бету</button>` 
+                        : `<button class="action-btn btn-beta" onclick="setRole('${u.name}', 'beta')">★ Дать Бету</button>`}
+                      
+                      ${u.banned 
+                        ? `<button class="action-btn btn-unban" onclick="unbanUser('${u.name}')">Разбанить</button>` 
+                        : `<button class="action-btn btn-ban" onclick="banUser('${u.name}')">Забанить</button>`}
+                    ` : '<span style="color: #868e96; font-size: 11px;">Создатель</span>'}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
-
-    ${req.query.success ? '<div class="alert">✓ Обновление успешно опубликовано для всех игроков!</div>' : ''}
-
-    <div class="stats-grid">
-      <div class="stat-item">
-        <div class="stat-label">Версия клиента:</div>
-        <div class="stat-val">${versionData.version}</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-label">Размер обновления:</div>
-        <div class="stat-val">${jarSize}</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-label">Синхронизация косметики:</div>
-        <div class="stat-val" style="color: #2ed573;">✓ Активна (${cosmeticsCount} игроков)</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-label">Маркеры друзей:</div>
-        <div class="stat-val" style="color: #2ed573;">✓ Активны (${activeMarkersCount})</div>
-      </div>
-    </div>
-
-    <form action="/api/loader/upload" method="POST" enctype="multipart/form-data">
-      <div class="field">
-        <label>Файл обновления клиента (.jar)</label>
-        <input type="file" name="clientJar" accept=".jar" required>
-      </div>
-
-      <div class="field">
-        <label>Номер версии (например: 1.21.11-v1.0.1)</label>
-        <input type="text" name="version" value="${versionData.version}" required>
-      </div>
-
-      <div class="field">
-        <label>Список изменений (Changelog)</label>
-        <textarea name="changelog" rows="3">${versionData.changelog || ''}</textarea>
-      </div>
-
-      <button type="submit" class="btn">ОПУБЛИКОВАТЬ ОБНОВЛЕНИЕ</button>
-    </form>
   </div>
+
+  <script>
+    function switchTab(tab) {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-updates').style.display = tab === 'updates' ? 'block' : 'none';
+      document.getElementById('tab-users').style.display = tab === 'users' ? 'block' : 'none';
+      event.target.classList.add('active');
+    }
+
+    async function setRole(nickname, role) {
+      if (!confirm('Изменить роль для ' + nickname + ' на ' + role + '?')) return;
+      const res = await fetch('/api/user/set-role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname, role })
+      });
+      if (res.ok) location.reload();
+    }
+
+    async function banUser(nickname) {
+      const reason = prompt('Укажите причину бана для ' + nickname + ':', 'Нарушение правил клиента');
+      if (reason === null) return;
+      const res = await fetch('/api/user/ban', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname, reason })
+      });
+      if (res.ok) location.reload();
+    }
+
+    async function unbanUser(nickname) {
+      if (!confirm('Разбанить пользователя ' + nickname + '?')) return;
+      const res = await fetch('/api/user/unban', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname })
+      });
+      if (res.ok) location.reload();
+    }
+  </script>
 </body>
 </html>`);
 });
