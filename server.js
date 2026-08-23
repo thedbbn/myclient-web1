@@ -124,7 +124,7 @@ function verifyToken(token) {
   }
 }
 
-// ==================== DASHBOARD UI ====================
+// ==================== ALL-IN-ONE SINGLE PAGE DASHBOARD ====================
 const DASHBOARD_HTML = `<!doctype html>
 <html lang="ru">
 <head>
@@ -136,40 +136,30 @@ const DASHBOARD_HTML = `<!doctype html>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', sans-serif; background: #0b0f17; color: #e6edf3; min-height: 100vh; }
-    .app { display: flex; min-height: 100vh; }
+    body { font-family: 'Inter', sans-serif; background: #0b0f17; color: #e6edf3; min-height: 100vh; padding: 30px 20px; }
+    .container { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
     
-    .sidebar { width: 270px; background: #131a26; border-right: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; padding: 24px 16px; }
-    .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; padding-left: 6px; }
-    .star-icon { font-size: 24px; color: #5c7cfa; }
-    .brand h1 { font-family: 'Outfit', sans-serif; font-size: 20px; color: #fff; font-weight: 800; }
-    .brand .sub { color: #5c7cfa; font-size: 13px; font-weight: 600; }
+    /* Header */
+    .main-header { display: flex; justify-content: space-between; align-items: center; background: #131a26; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 20px 28px; box-shadow: 0 8px 30px rgba(0,0,0,0.4); }
+    .brand-group { display: flex; align-items: center; gap: 12px; }
+    .star-logo { font-size: 28px; color: #5c7cfa; }
+    .brand-title { font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; color: #fff; }
+    .brand-sub { color: #5c7cfa; font-size: 14px; font-weight: 600; }
     
-    .nav-menu { display: flex; flex-direction: column; gap: 6px; flex: 1; }
-    .nav-tab-btn { background: transparent; border: none; color: #8b949e; padding: 11px 14px; text-align: left; border-radius: 8px; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: all 0.15s ease; display: block; width: 100%; }
-    .nav-tab-btn:hover { background: rgba(255, 255, 255, 0.05); color: #c9d1d9; }
-    .nav-tab-btn.active { background: rgba(92, 124, 250, 0.18) !important; color: #748ffc !important; border: 1px solid rgba(92, 124, 250, 0.35) !important; }
-    .sidebar-footer { font-size: 11px; color: #5c6370; text-align: center; padding-top: 12px; }
+    /* Cards */
+    .card { background: #131a26; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 12px; }
+    .card-header h2 { font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; }
     
-    .content { flex: 1; padding: 32px 40px; overflow-y: auto; }
-    .page-section { display: none; }
-    .page-section.active { display: block; }
-    
-    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-    .page-header h2 { font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 700; color: #fff; }
-    
-    .card { background: #131a26; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 22px; margin-bottom: 22px; }
-    .card h3 { font-size: 15px; margin-bottom: 14px; color: #e6edf3; font-weight: 700; }
-    
-    .row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
     .col { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 6px; }
     label { font-size: 12px; font-weight: 600; color: #8b949e; }
     
-    input, textarea, select { width: 100%; background: #0b0f17; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 10px 14px; color: #fff; font-size: 13px; font-family: inherit; outline: none; }
+    input, textarea, select { width: 100%; background: #0b0f17; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 10px 14px; color: #fff; font-size: 13px; font-family: inherit; outline: none; transition: border-color 0.15s ease; }
     input:focus, textarea:focus, select:focus { border-color: #5c7cfa; }
     textarea { min-height: 80px; resize: vertical; }
     
-    button { padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s ease; }
+    button { padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s ease; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
     .btn-primary { background: #238636; color: #fff; }
     .btn-primary:hover { background: #2ea043; }
     .btn-blue { background: #5c7cfa; color: #fff; }
@@ -178,11 +168,12 @@ const DASHBOARD_HTML = `<!doctype html>
     .btn-purple:hover { background: #9775fa; }
     .btn-danger { background: #da3633; color: #fff; }
     .btn-danger:hover { background: #f85149; }
-    .btn-sm { padding: 5px 10px; font-size: 11.5px; border-radius: 6px; margin-right: 4px; }
+    .btn-sm { padding: 6px 11px; font-size: 11.5px; border-radius: 6px; margin-right: 4px; margin-bottom: 4px; }
     
+    /* Table */
     .table-responsive { overflow-x: auto; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); }
     .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .data-table th { text-align: left; padding: 12px 14px; background: rgba(0,0,0,0.25); border-bottom: 1px solid rgba(255,255,255,0.08); color: #8b949e; font-size: 12px; }
+    .data-table th { text-align: left; padding: 12px 14px; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.08); color: #8b949e; font-size: 12px; }
     .data-table td { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
     .data-table tr:hover { background: rgba(255,255,255,0.02); }
     
@@ -195,124 +186,151 @@ const DASHBOARD_HTML = `<!doctype html>
     
     .actions-group { display: flex; gap: 4px; flex-wrap: wrap; }
     .mono { font-family: monospace; font-size: 11.5px; color: #8b949e; }
-    .code-box { background: #0b0f17; border: 1px solid rgba(255,255,255,0.08); padding: 14px; border-radius: 8px; font-family: monospace; font-size: 12px; overflow-x: auto; max-height: 400px; white-space: pre-wrap; color: #7ee787; }
+    .code-box { background: #0b0f17; border: 1px solid rgba(255,255,255,0.08); padding: 14px; border-radius: 8px; font-family: monospace; font-size: 12px; overflow-x: auto; max-height: 300px; white-space: pre-wrap; color: #7ee787; }
     
-    .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
-    .stat-card { background: #0b0f17; border: 1px solid rgba(255,255,255,0.08); padding: 18px; border-radius: 10px; display: flex; flex-direction: column; gap: 6px; }
+    .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+    .stat-card { background: #0b0f17; border: 1px solid rgba(255,255,255,0.08); padding: 16px; border-radius: 10px; display: flex; flex-direction: column; gap: 6px; }
     .stat-title { font-size: 12px; color: #8b949e; }
-    .stat-value { font-size: 19px; font-weight: 800; color: #fff; }
+    .stat-value { font-size: 18px; font-weight: 800; color: #fff; }
+    .sub-note { font-size: 12px; color: #8b949e; margin-bottom: 12px; }
   </style>
 </head>
 <body>
-  <div class="app">
-    <aside class="sidebar">
-      <div class="brand">
-        <span class="star-icon">✦</span>
+  <div class="container">
+    
+    <!-- Top Header -->
+    <header class="main-header">
+      <div class="brand-group">
+        <span class="star-logo">✦</span>
         <div>
-          <h1>Starly Client</h1>
-          <span class="sub">Панель управления</span>
+          <h1 class="brand-title">Starly Client</h1>
+          <span class="brand-sub">Панель управления (Все функции на одной странице)</span>
         </div>
       </div>
-      <nav class="nav-menu">
-        <button id="nav-btn-users" class="nav-tab-btn active" onclick="tab('users')">👥 Пользователи и Бан-лист</button>
-        <button id="nav-btn-ota" class="nav-tab-btn" onclick="tab('ota')">🚀 Выпуск обновлений (OTA)</button>
-        <button id="nav-btn-cosmetics" class="nav-tab-btn" onclick="tab('cosmetics')">✨ Косметика и Аватары</button>
-        <button id="nav-btn-markers" class="nav-tab-btn" onclick="tab('markers')">📍 Метки игроков</button>
-        <button id="nav-btn-status" class="nav-tab-btn" onclick="tab('status')">⚡ Статус сервера</button>
-      </nav>
-      <div class="sidebar-footer">
-        <span>Starly Client 1.21.11 Fabric</span>
+      <button onclick="refreshAll()" class="btn-blue">🔄 Обновить всю страницу</button>
+    </header>
+
+    <!-- SECTION 1: SYSTEM STATUS -->
+    <div class="card">
+      <div class="card-header">
+        <h2>⚡ Статус сервера и защита</h2>
       </div>
-    </aside>
-
-    <main class="content">
-      <!-- TAB 1: USERS & BANS -->
-      <section id="page-users" class="page-section active">
-        <div class="page-header">
-          <h2>👥 Управление пользователями, ролями и банами по HWID</h2>
-          <button onclick="loadUsers()" class="btn-blue">🔄 Обновить</button>
+      <div class="status-grid">
+        <div class="stat-card">
+          <span class="stat-title">Сервер API</span>
+          <span class="stat-value" style="color: #3fb950;">ONLINE</span>
         </div>
+        <div class="stat-card">
+          <span class="stat-title">Текущая версия релиза</span>
+          <span class="stat-value" id="stat-version">1.21.11</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-title">Бета версия (Early Access)</span>
+          <span class="stat-value" style="color: #a371f7;" id="stat-beta-version">1.21.11-beta</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-title">Защита от обхода банов</span>
+          <span class="stat-value" style="color: #58a6ff;">HWID Lock Active</span>
+        </div>
+      </div>
+    </div>
 
-        <!-- Create Account Form -->
-        <div class="card">
-          <h3>➕ Создать / Зарегистрировать аккаунт</h3>
-          <div class="row">
-            <div class="col">
-              <label>Игровой никнейм</label>
-              <input id="create-nick" placeholder="Например: Player123">
-            </div>
-            <div class="col">
-              <label>Email почта</label>
-              <input id="create-email" type="email" placeholder="user@gmail.com">
-            </div>
-            <div class="col">
-              <label>Пароль</label>
-              <input id="create-pwd" type="password" placeholder="••••••••">
-            </div>
-            <div class="col">
-              <label>Роль</label>
-              <select id="create-role">
-                <option value="user">Игрок (User)</option>
-                <option value="beta">Beta тестер</option>
-                <option value="owner">Владелец (Owner)</option>
-              </select>
-            </div>
-            <div style="align-self: flex-end;">
-              <button onclick="createAccountDirectly()" class="btn-primary">Создать аккаунт</button>
-            </div>
+    <!-- SECTION 2: USERS LIST & MANAGEMENT -->
+    <div class="card">
+      <div class="card-header">
+        <h2>👥 Зарегистрированные аккаунты (<span id="user-count-badge">0</span>)</h2>
+        <button onclick="loadUsers()" class="btn-blue btn-sm">🔄 Обновить игроков</button>
+      </div>
+      <p class="sub-note">Здесь отображаются все зарегистрированные игроки. Вы можете выдавать Beta-доступ, Owner или банить по HWID.</p>
+      
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Игрок</th>
+              <th>Email</th>
+              <th>Роль</th>
+              <th>HWID устройства</th>
+              <th>Статус</th>
+              <th>Управление (Beta / Owner / Бан)</th>
+            </tr>
+          </thead>
+          <tbody id="users-table-body">
+            <tr><td colspan="6" style="text-align: center; color: #8b949e; padding: 24px;">Загрузка аккаунтов...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SECTION 3: CREATE USER & BAN USER -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+      
+      <!-- Create Account -->
+      <div class="card">
+        <div class="card-header">
+          <h2>➕ Создать / Зарегистрировать аккаунт</h2>
+        </div>
+        <div class="row">
+          <div class="col">
+            <label>Игровой никнейм</label>
+            <input id="create-nick" placeholder="Player123">
+          </div>
+          <div class="col">
+            <label>Email почта</label>
+            <input id="create-email" type="email" placeholder="user@gmail.com">
           </div>
         </div>
-
-        <!-- Ban User Form -->
-        <div class="card">
-          <h3>🚫 Быстрый бан пользователя и его устройства</h3>
-          <div class="row">
-            <div class="col">
-              <label>Никнейм или Email</label>
-              <input id="ban-input-nick" placeholder="Например: Player123 или user@gmail.com">
-            </div>
-            <div class="col">
-              <label>Причина блокировки</label>
-              <input id="ban-input-reason" placeholder="Например: Чит, декомпиляция, мультиаккаунт">
-            </div>
-            <div style="align-self: flex-end;">
-              <button onclick="submitBan()" class="btn-danger">Забанить (Аккаунт + HWID)</button>
-            </div>
+        <div class="row">
+          <div class="col">
+            <label>Пароль</label>
+            <input id="create-pwd" type="password" placeholder="••••••••">
+          </div>
+          <div class="col">
+            <label>Роль</label>
+            <select id="create-role">
+              <option value="user">Игрок (User)</option>
+              <option value="beta">Beta тестер</option>
+              <option value="owner">Владелец (Owner)</option>
+            </select>
           </div>
         </div>
+        <button onclick="createAccountDirectly()" class="btn-primary" style="width: 100%; margin-top: 4px;">➕ Создать аккаунт</button>
+      </div>
 
-        <!-- Users Table -->
-        <div class="card">
-          <h3>📋 Зарегистрированные аккаунты (<span id="user-count-badge">0</span>)</h3>
-          <div class="table-responsive">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Игрок</th>
-                  <th>Email</th>
-                  <th>Роль</th>
-                  <th>HWID устройства</th>
-                  <th>Статус</th>
-                  <th>Управление</th>
-                </tr>
-              </thead>
-              <tbody id="users-table-body">
-                <tr><td colspan="6" style="text-align: center; color: #8b949e; padding: 24px;">Загрузка аккаунтов...</td></tr>
-              </tbody>
-            </table>
+      <!-- Ban User -->
+      <div class="card">
+        <div class="card-header">
+          <h2>🚫 Бан игрока и его устройства (HWID)</h2>
+        </div>
+        <div class="row">
+          <div class="col">
+            <label>Никнейм или Email</label>
+            <input id="ban-input-nick" placeholder="Player123 или user@gmail.com">
           </div>
         </div>
-      </section>
-
-      <!-- TAB 2: OTA RELEASES -->
-      <section id="page-ota" class="page-section">
-        <div class="page-header">
-          <h2>🚀 Публикация и управление обновлениями мода (OTA)</h2>
-          <button onclick="loadVersionData()" class="btn-blue">🔄 Обновить</button>
+        <div class="row">
+          <div class="col">
+            <label>Причина блокировки</label>
+            <input id="ban-input-reason" placeholder="Чит / Нарушение правил / Мультиакк">
+          </div>
         </div>
+        <button onclick="submitBan()" class="btn-danger" style="width: 100%; margin-top: 4px;">🚫 Забанить (Аккаунт + HWID)</button>
+      </div>
 
-        <div class="card">
-          <h3>📦 Релизный канал (Основная версия для всех)</h3>
+    </div>
+
+    <!-- SECTION 4: OTA RELEASES (RELEASE & BETA) -->
+    <div class="card">
+      <div class="card-header">
+        <h2>🚀 Публикация обновлений клиента (OTA)</h2>
+        <button onclick="loadVersionData()" class="btn-blue btn-sm">🔄 Обновить версии</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+        
+        <!-- Release Channel -->
+        <div style="background: #0b0f17; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 18px;">
+          <h3 style="color: #3fb950; margin-bottom: 12px;">📦 Релизная версия (Для всех)</h3>
           <div class="row">
             <div class="col">
               <label>Версия релиза</label>
@@ -321,120 +339,77 @@ const DASHBOARD_HTML = `<!doctype html>
           </div>
           <div class="row">
             <div class="col">
-              <label>Список изменений (Changelog для всех игроков)</label>
-              <textarea id="ota-release-changelog" placeholder="Опишите новые функции, фиксы и изменения..."></textarea>
+              <label>Список изменений (Changelog)</label>
+              <textarea id="ota-release-changelog" placeholder="Описание обновления для игроков..."></textarea>
             </div>
           </div>
           <div class="row">
             <div class="col">
-              <label>Загрузить файл мода (Starly-Client-1.21.11.jar)</label>
+              <label>Файл мода (Starly-Client-1.21.11.jar)</label>
               <input type="file" id="ota-release-file" accept=".jar">
             </div>
           </div>
-          <div style="margin-top: 10px;">
-            <button onclick="publishRelease(false)" class="btn-primary">🚀 Опубликовать релизное обновление</button>
-          </div>
+          <button onclick="publishRelease(false)" class="btn-primary" style="width: 100%; margin-top: 8px;">🚀 Опубликовать Релиз</button>
         </div>
 
-        <div class="card">
-          <h3>🧪 Бета-канал (Для пользователей с ролью Beta / Early Access)</h3>
+        <!-- Beta Channel -->
+        <div style="background: #0b0f17; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 18px;">
+          <h3 style="color: #a371f7; margin-bottom: 12px;">🧪 Бета-версия (Для Beta-юзеров)</h3>
           <div class="row">
             <div class="col">
-              <label>Версия Beta</label>
+              <label>Beta Версия</label>
               <input id="ota-beta-version" placeholder="1.21.11-v1.0.1-beta">
             </div>
           </div>
           <div class="row">
             <div class="col">
               <label>Beta Changelog</label>
-              <textarea id="ota-beta-changelog" placeholder="Экспериментальные функции и закрытые тесты..."></textarea>
+              <textarea id="ota-beta-changelog" placeholder="Экспериментальные фичи..."></textarea>
             </div>
           </div>
           <div class="row">
             <div class="col">
-              <label>Загрузить файл бета-мода (Starly-Client-1.21.11-beta.jar)</label>
+              <label>Файл бета-мода (Starly-Client-1.21.11-beta.jar)</label>
               <input type="file" id="ota-beta-file" accept=".jar">
             </div>
           </div>
-          <div style="margin-top: 10px;">
-            <button onclick="publishRelease(true)" class="btn-purple">⚡ Опубликовать Beta-обновление</button>
-          </div>
+          <button onclick="publishRelease(true)" class="btn-purple" style="width: 100%; margin-top: 8px;">⚡ Опубликовать Beta</button>
         </div>
-      </section>
 
-      <!-- TAB 3: COSMETICS -->
-      <section id="page-cosmetics" class="page-section">
-        <div class="page-header">
-          <h2>✨ Синхронизация 3D-косметики и Figura-аватаров</h2>
-          <button onclick="loadCosmetics()" class="btn-blue">🔄 Обновить</button>
-        </div>
-        <div class="card">
-          <p style="margin-bottom: 12px; font-size: 13px; color: #8b949e;">Здесь отображаются активные косметические наборы, отправленные игроками клиента.</p>
-          <pre id="cosmetics-json" class="code-box">Загрузка...</pre>
-        </div>
-      </section>
+      </div>
+    </div>
 
-      <!-- TAB 4: MARKERS -->
-      <section id="page-markers" class="page-section">
-        <div class="page-header">
-          <h2>📍 Метки игроков на серверах (Friend Markers)</h2>
-          <button onclick="loadMarkers()" class="btn-blue">🔄 Обновить</button>
+    <!-- SECTION 5: COSMETICS & MARKERS -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+      
+      <!-- Cosmetics -->
+      <div class="card">
+        <div class="card-header">
+          <h2>✨ Активная косметика и аватары</h2>
+          <button onclick="loadCosmetics()" class="btn-blue btn-sm">🔄 Обновить</button>
         </div>
-        <div class="card">
-          <p style="margin-bottom: 12px; font-size: 13px; color: #8b949e;">Координаты меток, сохранённых игроками.</p>
-          <pre id="markers-json" class="code-box">Загрузка...</pre>
-        </div>
-      </section>
+        <pre id="cosmetics-json" class="code-box">Загрузка данных косметики...</pre>
+      </div>
 
-      <!-- TAB 5: STATUS -->
-      <section id="page-status" class="page-section">
-        <div class="page-header">
-          <h2>⚡ Статус и системная статистика</h2>
+      <!-- Markers -->
+      <div class="card">
+        <div class="card-header">
+          <h2>📍 Метки игроков на серверах</h2>
+          <button onclick="loadMarkers()" class="btn-blue btn-sm">🔄 Обновить</button>
         </div>
-        <div class="card">
-          <div class="status-grid">
-            <div class="stat-card">
-              <span class="stat-title">Сервер API</span>
-              <span class="stat-value" style="color: #3fb950;">ONLINE</span>
-            </div>
-            <div class="stat-card">
-              <span class="stat-title">Текущая версия релиза</span>
-              <span class="stat-value" id="stat-version">1.21.11</span>
-            </div>
-            <div class="stat-card">
-              <span class="stat-title">Бета версия</span>
-              <span class="stat-value" style="color: #a371f7;" id="stat-beta-version">1.21.11-beta</span>
-            </div>
-            <div class="stat-card">
-              <span class="stat-title">Защита от обхода банов</span>
-              <span class="stat-value" style="color: #58a6ff;">HWID Blacklist Active</span>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
+        <pre id="markers-json" class="code-box">Загрузка меток...</pre>
+      </div>
+
+    </div>
+
   </div>
 
   <script>
-    function tab(name) {
-      var tabs = ['users', 'ota', 'cosmetics', 'markers', 'status'];
-      for (var i = 0; i < tabs.length; i++) {
-        var t = tabs[i];
-        var btn = document.getElementById('nav-btn-' + t);
-        var sec = document.getElementById('page-' + t);
-        if (btn) btn.classList.remove('active');
-        if (sec) sec.classList.remove('active');
-      }
-
-      var curBtn = document.getElementById('nav-btn-' + name);
-      var curSec = document.getElementById('page-' + name);
-      if (curBtn) curBtn.classList.add('active');
-      if (curSec) curSec.classList.add('active');
-
-      if (name === 'users') loadUsers();
-      if (name === 'ota') loadVersionData();
-      if (name === 'cosmetics') loadCosmetics();
-      if (name === 'markers') loadMarkers();
+    function refreshAll() {
+      loadUsers();
+      loadVersionData();
+      loadCosmetics();
+      loadMarkers();
     }
 
     function createAccountDirectly() {
@@ -468,7 +443,7 @@ const DASHBOARD_HTML = `<!doctype html>
           document.getElementById('create-pwd').value = '';
           loadUsers();
         } else {
-          alert('Ошибка создания: ' + (res.error || 'Неизвестная ошибка'));
+          alert('Ошибка: ' + (res.error || 'Не удалось создать'));
         }
       });
     }
@@ -483,7 +458,7 @@ const DASHBOARD_HTML = `<!doctype html>
         .then(function(users) {
           if (badge) badge.textContent = users.length || 0;
           if (!users || users.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #8b949e; padding: 24px;">Аккаунтов пока нет. Создайте аккаунт выше или зарегистрируйтесь в лоадере!</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #8b949e; padding: 24px;">Аккаунтов пока нет. Зарегистрируйтесь в лоадере или создайте аккаунт выше!</td></tr>';
             return;
           }
 
@@ -668,8 +643,7 @@ const DASHBOARD_HTML = `<!doctype html>
     }
 
     window.onload = function() {
-      loadUsers();
-      loadVersionData();
+      refreshAll();
     };
   </script>
 </body>
@@ -1052,5 +1026,5 @@ app.post('/api/markers', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[StarlyServer] Running on port ${PORT} with Direct tab() Handler`);
+  console.log(`[StarlyServer] Running on port ${PORT} with All-In-One Single Page Dashboard`);
 });
