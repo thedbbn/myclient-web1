@@ -48,9 +48,31 @@ let accounts = {};
 if (fs.existsSync(ACCOUNTS_FILE)) {
   try { accounts = JSON.parse(fs.readFileSync(ACCOUNTS_FILE, 'utf8')); } catch (e) { accounts = {}; }
 }
+
+function hashPassword(pwd) {
+  return crypto.createHash('sha256').update(pwd + PASSWORD_SALT).digest('hex');
+}
+
+// Ensure default admin account always exists
+if (Object.keys(accounts).length === 0) {
+  accounts['admin@starly.client'] = {
+    email: 'admin@starly.client',
+    nickname: 'Admin',
+    passwordHash: hashPassword('admin123'),
+    hwid: '',
+    role: 'owner',
+    customEarlyAccess: true,
+    banned: false,
+    banReason: '',
+    registeredAt: new Date().toISOString(),
+    lastLoginAt: new Date().toISOString()
+  };
+}
+
 function saveAccounts() {
   try { fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(accounts, null, 2), 'utf8'); } catch (e) {}
 }
+saveAccounts();
 
 let bannedHwids = {};
 if (fs.existsSync(BANNED_HWIDS_FILE)) {
@@ -84,10 +106,6 @@ if (fs.existsSync(VERSION_FILE)) {
 }
 function saveVersion() {
   try { fs.writeFileSync(VERSION_FILE, JSON.stringify(versionData, null, 2), 'utf8'); } catch (e) {}
-}
-
-function hashPassword(pwd) {
-  return crypto.createHash('sha256').update(pwd + PASSWORD_SALT).digest('hex');
 }
 
 function isHwidBanned(hwid) {
@@ -266,10 +284,10 @@ const DASHBOARD_HTML = `<!doctype html>
     <!-- SECTION 2: USERS LIST & MANAGEMENT -->
     <div class="card">
       <div class="card-header">
-        <h2>👥 Зарегистрированные аккаунты (<span id="user-count-badge">0</span>)</h2>
-        <button onclick="loadUsers()" class="btn-blue btn-sm">🔄 Обновить игроков</button>
+        <h2>👥 Зарегистрированные аккаунты (<span id="user-count-badge">1</span>)</h2>
+        <button onclick="loadUsers()" class="btn-blue btn-sm">🔄 Обновить список</button>
       </div>
-      <p class="sub-note">Здесь отображаются все зарегистрированные игроки. Вы можете выдавать Beta-доступ, Owner или банить по HWID.</p>
+      <p class="sub-note">Все зарегистрированные игроки. Вы можете выдавать Beta-доступ, Owner или банить по HWID.</p>
       
       <div class="table-responsive">
         <table class="data-table">
@@ -284,7 +302,19 @@ const DASHBOARD_HTML = `<!doctype html>
             </tr>
           </thead>
           <tbody id="users-table-body">
-            <tr><td colspan="6" style="text-align: center; color: #8b949e; padding: 24px;">Загрузка аккаунтов...</td></tr>
+            <tr>
+              <td><strong>Admin</strong></td>
+              <td>admin@starly.client</td>
+              <td><span class="badge badge-owner">owner</span></td>
+              <td class="mono">—</td>
+              <td><span class="badge badge-active">АКТИВЕН</span></td>
+              <td>
+                <div class="actions-group">
+                  <button class="btn-purple btn-sm" onclick="setRole('Admin', 'beta')">✨ Выдать Beta</button>
+                  <button class="btn-danger btn-sm" onclick="quickBan('Admin')">🚫 Бан</button>
+                </div>
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -301,24 +331,24 @@ const DASHBOARD_HTML = `<!doctype html>
         <div class="row">
           <div class="col">
             <label>Игровой никнейм</label>
-            <input id="create-nick" placeholder="Player123">
+            <input id="create-nick" value="Player1" placeholder="Введите ник">
           </div>
           <div class="col">
-            <label>Email почта</label>
-            <input id="create-email" type="email" placeholder="user@gmail.com">
+            <label>Email почта (необязательно)</label>
+            <input id="create-email" value="player1@starly.client" type="email" placeholder="user@gmail.com">
           </div>
         </div>
         <div class="row">
           <div class="col">
             <label>Пароль</label>
-            <input id="create-pwd" type="password" placeholder="••••••••">
+            <input id="create-pwd" value="123456" type="text" placeholder="Введите пароль">
           </div>
           <div class="col">
             <label>Роль</label>
             <select id="create-role">
-              <option value="user">Игрок (User)</option>
-              <option value="beta">Beta тестер</option>
-              <option value="owner">Владелец (Owner)</option>
+              <option value="owner">👑 Владелец (Owner)</option>
+              <option value="beta">✨ Beta тестер</option>
+              <option value="user" selected>👤 Игрок (User)</option>
             </select>
           </div>
         </div>
@@ -333,13 +363,13 @@ const DASHBOARD_HTML = `<!doctype html>
         <div class="row">
           <div class="col">
             <label>Никнейм или Email</label>
-            <input id="ban-input-nick" placeholder="Player123 или user@gmail.com">
+            <input id="ban-input-nick" placeholder="Никнейм игрока для бана">
           </div>
         </div>
         <div class="row">
           <div class="col">
             <label>Причина блокировки</label>
-            <input id="ban-input-reason" placeholder="Чит / Нарушение правил / Мультиакк">
+            <input id="ban-input-reason" value="Нарушение правил" placeholder="Причина бана">
           </div>
         </div>
         <button id="btn-ban-action" onclick="submitBan()" class="btn-danger" style="width: 100%; margin-top: 4px;">🚫 Забанить (Аккаунт + HWID)</button>
@@ -362,13 +392,13 @@ const DASHBOARD_HTML = `<!doctype html>
           <div class="row">
             <div class="col">
               <label>Версия релиза</label>
-              <input id="ota-release-version" placeholder="1.21.11-v1.0.1">
+              <input id="ota-release-version" value="1.21.11-v1.0.1" placeholder="1.21.11-v1.0.1">
             </div>
           </div>
           <div class="row">
             <div class="col">
               <label>Список изменений (Changelog)</label>
-              <textarea id="ota-release-changelog" placeholder="Описание обновления для игроков..."></textarea>
+              <textarea id="ota-release-changelog" placeholder="Описание обновления для игроков...">Релиз Starly Client 1.21.11: обновленный кастомный хотбар, статус-бары, Modrinth каталог модов.</textarea>
             </div>
           </div>
           <div class="row">
@@ -386,13 +416,13 @@ const DASHBOARD_HTML = `<!doctype html>
           <div class="row">
             <div class="col">
               <label>Beta Версия</label>
-              <input id="ota-beta-version" placeholder="1.21.11-v1.0.1-beta">
+              <input id="ota-beta-version" value="1.21.11-v1.0.1-beta" placeholder="1.21.11-v1.0.1-beta">
             </div>
           </div>
           <div class="row">
             <div class="col">
               <label>Beta Changelog</label>
-              <textarea id="ota-beta-changelog" placeholder="Экспериментальные фичи..."></textarea>
+              <textarea id="ota-beta-changelog" placeholder="Экспериментальные фичи...">Бета-версия с экспериментальными функциями и ранними обновлениями.</textarea>
             </div>
           </div>
           <div class="row">
@@ -491,9 +521,6 @@ const DASHBOARD_HTML = `<!doctype html>
             }).then(function() { loadUsers(); });
           }
           showToast('Аккаунт ' + nick + ' успешно создан!', 'success');
-          document.getElementById('create-nick').value = '';
-          document.getElementById('create-email').value = '';
-          document.getElementById('create-pwd').value = '';
           loadUsers();
         } else {
           showToast('Ошибка: ' + (res.error || 'Не удалось создать'), 'error');
@@ -513,41 +540,45 @@ const DASHBOARD_HTML = `<!doctype html>
       fetch('/api/users')
         .then(function(res) { return res.json(); })
         .then(function(users) {
-          if (badge) badge.textContent = users.length || 0;
-          if (!users || users.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #8b949e; padding: 24px;">Аккаунтов пока нет. Зарегистрируйтесь в лоадере или создайте аккаунт выше!</td></tr>';
+          if (!users || !Array.isArray(users)) return;
+          if (badge) badge.textContent = users.length;
+          if (users.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #8b949e; padding: 24px;">Аккаунтов пока нет. Нажмите «Создать аккаунт» выше!</td></tr>';
             return;
           }
 
           var html = '';
           for (var i = 0; i < users.length; i++) {
             var u = users[i];
+            var nick = u.nickname || 'Unknown';
+            var email = u.email || '—';
+            var role = u.role || 'user';
             var hwidShort = u.hwid ? escapeHtml(u.hwid.substring(0, 16)) + '...' : '—';
-            var badgeClass = 'badge-' + (u.role || 'user');
+            var badgeClass = 'badge-' + role;
             var statusBadge = u.banned 
               ? '<span class="badge badge-banned">ЗАБАНЕН (' + escapeHtml(u.banReason || 'Бан') + ')</span>' 
               : '<span class="badge badge-active">АКТИВЕН</span>';
 
             var roleButtons = '<div class="actions-group">';
-            if (u.role !== 'beta') {
-              roleButtons += '<button class="btn-purple btn-sm" onclick="setRole(\'' + escapeHtml(u.nickname) + '\', \'beta\')">✨ Выдать Beta</button>';
+            if (role !== 'beta') {
+              roleButtons += '<button class="btn-purple btn-sm" onclick="setRole(\'' + escapeHtml(nick) + '\', \'beta\')">✨ Выдать Beta</button>';
             } else {
-              roleButtons += '<button class="btn-blue btn-sm" onclick="setRole(\'' + escapeHtml(u.nickname) + '\', \'user\')">Снять Beta</button>';
+              roleButtons += '<button class="btn-blue btn-sm" onclick="setRole(\'' + escapeHtml(nick) + '\', \'user\')">Снять Beta</button>';
             }
-            if (u.role !== 'owner') {
-              roleButtons += '<button class="btn-primary btn-sm" onclick="setRole(\'' + escapeHtml(u.nickname) + '\', \'owner\')">👑 Owner</button>';
+            if (role !== 'owner') {
+              roleButtons += '<button class="btn-primary btn-sm" onclick="setRole(\'' + escapeHtml(nick) + '\', \'owner\')">👑 Owner</button>';
             }
             if (u.banned) {
-              roleButtons += '<button class="btn-primary btn-sm" onclick="unban(\'' + escapeHtml(u.nickname) + '\')">✅ Разбанить</button>';
+              roleButtons += '<button class="btn-primary btn-sm" onclick="unban(\'' + escapeHtml(nick) + '\')">✅ Разбанить</button>';
             } else {
-              roleButtons += '<button class="btn-danger btn-sm" onclick="quickBan(\'' + escapeHtml(u.nickname) + '\')">🚫 Бан</button>';
+              roleButtons += '<button class="btn-danger btn-sm" onclick="quickBan(\'' + escapeHtml(nick) + '\')">🚫 Бан</button>';
             }
             roleButtons += '</div>';
 
             html += '<tr>' +
-              '<td><strong>' + escapeHtml(u.nickname) + '</strong></td>' +
-              '<td>' + escapeHtml(u.email) + '</td>' +
-              '<td><span class="badge ' + badgeClass + '">' + escapeHtml(u.role) + '</span></td>' +
+              '<td><strong>' + escapeHtml(nick) + '</strong></td>' +
+              '<td>' + escapeHtml(email) + '</td>' +
+              '<td><span class="badge ' + badgeClass + '">' + escapeHtml(role) + '</span></td>' +
               '<td class="mono">' + hwidShort + '</td>' +
               '<td>' + statusBadge + '</td>' +
               '<td>' + roleButtons + '</td>' +
@@ -556,7 +587,7 @@ const DASHBOARD_HTML = `<!doctype html>
           tbody.innerHTML = html;
         })
         .catch(function(err) {
-          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #ff8787; padding: 24px;">Ошибка загрузки: ' + err.message + '</td></tr>';
+          console.error('loadUsers error:', err);
         });
     }
 
@@ -609,7 +640,7 @@ const DASHBOARD_HTML = `<!doctype html>
       var reason = (reasonInput ? reasonInput.value.trim() : '') || 'Заблокирован администратором';
       var btn = document.getElementById('btn-ban-action');
 
-      if (!nick) return showToast('Введите никнейм или почту для бана!', 'error');
+      if (!nick) return showToast('Введите никнейм игрока для бана!', 'error');
 
       if (btn) btn.textContent = '⏳ Блокировка...';
 
@@ -624,7 +655,6 @@ const DASHBOARD_HTML = `<!doctype html>
         if (data.success) {
           showToast(data.message, 'success');
           if (nickInput) nickInput.value = '';
-          if (reasonInput) reasonInput.value = '';
           loadUsers();
         } else {
           showToast('Ошибка: ' + (data.error || 'Не удалось забанить'), 'error');
@@ -647,10 +677,10 @@ const DASHBOARD_HTML = `<!doctype html>
           var statV = document.getElementById('stat-version');
           var statBV = document.getElementById('stat-beta-version');
 
-          if (rVer) rVer.value = v.version || '';
-          if (rLog) rLog.value = v.changelog || '';
-          if (bVer) bVer.value = v.betaVersion || '';
-          if (bLog) bLog.value = v.betaChangelog || '';
+          if (rVer && v.version) rVer.value = v.version;
+          if (rLog && v.changelog) rLog.value = v.changelog;
+          if (bVer && v.betaVersion) bVer.value = v.betaVersion;
+          if (bLog && v.betaChangelog) bLog.value = v.betaChangelog;
           if (statV) statV.textContent = v.version || '1.21.11';
           if (statBV) statBV.textContent = v.betaVersion || '1.21.11-beta';
         });
@@ -729,11 +759,11 @@ const DASHBOARD_HTML = `<!doctype html>
     }
 
     window.onload = function() {
-      refreshAll();
+      loadUsers();
+      loadVersionData();
       setInterval(function() {
         loadUsers();
-        loadVersionData();
-      }, 3000);
+      }, 2500);
     };
   </script>
 </body>
@@ -751,25 +781,20 @@ app.get('/', (req, res) => {
 
 app.post('/api/auth/register', (req, res) => {
   const { email, nickname, password, hwid } = req.body;
-  if (!email || !nickname || !password) {
-    return res.status(400).json({ success: false, error: 'Заполните все поля (почта, никнейм, пароль)' });
+  if (!nickname || !password) {
+    return res.status(400).json({ success: false, error: 'Заполните никнейм и пароль' });
   }
 
-  const cleanEmail = email.trim().toLowerCase();
   const cleanNick = nickname.trim();
+  const cleanEmail = (email || `${cleanNick.toLowerCase()}@starly.client`).trim().toLowerCase();
   const cleanHwid = (hwid || '').trim().toLowerCase();
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(cleanEmail)) {
-    return res.status(400).json({ success: false, error: 'Введите корректный адрес электронной почты' });
-  }
 
   if (cleanNick.length < 3 || cleanNick.length > 20) {
     return res.status(400).json({ success: false, error: 'Никнейм должен быть от 3 до 20 символов' });
   }
 
-  if (password.length < 4) {
-    return res.status(400).json({ success: false, error: 'Пароль должен содержать минимум 4 символа' });
+  if (password.length < 3) {
+    return res.status(400).json({ success: false, error: 'Пароль должен содержать минимум 3 символа' });
   }
 
   if (isHwidBanned(cleanHwid)) {
@@ -1116,5 +1141,5 @@ app.post('/api/markers', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[StarlyServer] Running on port ${PORT} with Toast Notifications & Visual Feedback`);
+  console.log(`[StarlyServer] Running on port ${PORT} with Pre-filled Defaults & Persistent Admin Account`);
 });
