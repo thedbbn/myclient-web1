@@ -589,11 +589,15 @@ app.get('/api/auth/verify', (req, res) => {
     versionData: hasEarlyAccess ? {
       version: versionData.betaVersion || versionData.version,
       changelog: versionData.betaChangelog || versionData.changelog,
-      updatedAt: versionData.betaUpdatedAt || versionData.updatedAt
+      updatedAt: versionData.betaUpdatedAt || versionData.updatedAt,
+      downloadUrl: '/api/loader/download-beta',
+      isBeta: true
     } : {
       version: versionData.version,
       changelog: versionData.changelog,
-      updatedAt: versionData.updatedAt
+      updatedAt: versionData.updatedAt,
+      downloadUrl: '/api/loader/download',
+      isBeta: false
     }
   });
 });
@@ -726,10 +730,32 @@ app.post('/api/loader/upload-beta', (req, res) => {
 
 app.get('/api/loader/version', (req, res) => {
   const hwid = (req.headers['x-hwid'] || req.query.hwid || '').trim().toLowerCase();
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '') || req.query.token;
   if (isHwidBanned(hwid)) {
     return res.status(403).json({ error: 'Устройство заблокировано', banned: true });
   }
-  res.json(versionData);
+  
+  const acc = verifyToken(token);
+  const isEarly = acc && (acc.role === 'beta' || acc.role === 'owner' || acc.customEarlyAccess);
+  
+  if (isEarly) {
+    res.json({
+      version: versionData.betaVersion || versionData.version,
+      changelog: versionData.betaChangelog || versionData.changelog,
+      updatedAt: versionData.betaUpdatedAt || versionData.updatedAt,
+      downloadUrl: '/api/loader/download-beta',
+      isBeta: true
+    });
+  } else {
+    res.json({
+      version: versionData.version,
+      changelog: versionData.changelog,
+      updatedAt: versionData.updatedAt,
+      downloadUrl: '/api/loader/download',
+      isBeta: false
+    });
+  }
 });
 
 app.get('/api/loader/download', (req, res) => {
