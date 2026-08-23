@@ -306,6 +306,7 @@ window.publishRelease = function(isBeta) {
   var verInput = document.getElementById(isBeta ? 'ota-beta-version' : 'ota-release-version');
   var logInput = document.getElementById(isBeta ? 'ota-beta-changelog' : 'ota-release-changelog');
   var fileInput = document.getElementById(isBeta ? 'ota-beta-file' : 'ota-release-file');
+  var btn = document.getElementById(isBeta ? 'btn-pub-beta' : 'btn-pub-release');
 
   var version = verInput ? verInput.value.trim() : '';
   var changelog = logInput ? logInput.value.trim() : '';
@@ -315,14 +316,18 @@ window.publishRelease = function(isBeta) {
     return;
   }
 
+  if (btn) btn.textContent = 'Публикация...';
+
   fetch('/api/loader/set-version', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ version: version, changelog: changelog, isBeta: isBeta })
   })
+  .then(function(r) { return r.json(); })
   .then(function() {
     if (fileInput && fileInput.files.length > 0) {
       var file = fileInput.files[0];
+      if (btn) btn.textContent = 'Загрузка JAR (' + (file.size / 1024 / 1024).toFixed(1) + ' МБ)...';
       var reader = new FileReader();
       reader.onload = function() {
         var buffer = reader.result;
@@ -331,18 +336,32 @@ window.publishRelease = function(isBeta) {
           method: 'POST',
           headers: { 'Content-Type': 'application/octet-stream' },
           body: buffer
-        }).then(function() {
-          alert((isBeta ? 'Beta' : 'Release') + ' обновление опубликовано!');
-          window.loadVersionData();
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+          if (btn) btn.textContent = isBeta ? 'Опубликовать Beta' : 'Опубликовать Релиз';
+          if (res.success) {
+            alert('✅ ' + (isBeta ? 'Beta' : 'Релиз') + ' JAR успешно загружен на сервер (' + (res.size / 1024 / 1024).toFixed(2) + ' МБ)! Все лоадеры обновят файл при запуске.');
+            if (fileInput) fileInput.value = '';
+            window.loadVersionData();
+          } else {
+            alert('❌ Ошибка загрузки JAR: ' + (res.error || 'Сбой'));
+          }
+        })
+        .catch(function(err) {
+          if (btn) btn.textContent = isBeta ? 'Опубликовать Beta' : 'Опубликовать Релиз';
+          alert('❌ Ошибка сети при загрузке JAR: ' + err.message);
         });
       };
       reader.readAsArrayBuffer(file);
     } else {
-      alert((isBeta ? 'Beta' : 'Release') + ' версия обновлена!');
+      if (btn) btn.textContent = isBeta ? 'Опубликовать Beta' : 'Опубликовать Релиз';
+      alert('Версия и список изменений обновлены!');
       window.loadVersionData();
     }
   })
   .catch(function(err) {
+    if (btn) btn.textContent = isBeta ? 'Опубликовать Beta' : 'Опубликовать Релиз';
     alert('Ошибка: ' + err.message);
   });
 };
