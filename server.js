@@ -7,11 +7,12 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const PASSWORD_SALT = 'STARLY_AUTH_SALT_v1_2026';
 
-// Permissive CORS and Security Headers
+// CORS & CSP
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-version, x-changelog, x-channel, x-hwid');
+  res.header('Content-Security-Policy', "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;");
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
@@ -95,8 +96,8 @@ function saveMarkers() {
 let versionData = {
   version: '1.21.11-v1.0.0',
   betaVersion: '1.21.11-v1.0.0-beta',
-  changelog: 'Релиз Starly Client 1.21.11: обновленный кастомный хотбар, статус-бары, Modrinth каталог модов.',
-  betaChangelog: 'Бета-версия с экспериментальными функциями и ранними обновлениями.',
+  changelog: 'Starly Client 1.21.11: Custom Hotbar, Status Bars, Modrinth catalog.',
+  betaChangelog: 'Beta channel with early experimental updates.',
   updatedAt: new Date().toISOString(),
   betaUpdatedAt: new Date().toISOString()
 };
@@ -158,13 +159,13 @@ function verifyToken(token) {
   }
 }
 
-// ==================== ALL-IN-ONE SINGLE PAGE DASHBOARD ====================
+// ==================== DASHBOARD HTML ====================
 const DASHBOARD_HTML = `<!doctype html>
 <html lang="ru">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Starly Client — Панель управления</title>
+  <title>Starly Client - Control Panel</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
@@ -173,29 +174,25 @@ const DASHBOARD_HTML = `<!doctype html>
     body { font-family: 'Inter', sans-serif; background: #0b0f17; color: #e6edf3; min-height: 100vh; padding: 30px 20px; }
     .container { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
     
-    /* Header */
-    .main-header { display: flex; justify-content: space-between; align-items: center; background: #131a26; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 20px 28px; box-shadow: 0 8px 30px rgba(0,0,0,0.4); }
+    .main-header { display: flex; justify-content: space-between; align-items: center; background: #131a26; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 20px 28px; }
     .brand-group { display: flex; align-items: center; gap: 12px; }
-    .star-logo { font-size: 28px; color: #5c7cfa; }
     .brand-title { font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; color: #fff; }
     .brand-sub { color: #5c7cfa; font-size: 14px; font-weight: 600; }
     
-    /* Cards */
-    .card { background: #131a26; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+    .card { background: #131a26; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 24px; }
     .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 12px; }
-    .card-header h2 { font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; }
+    .card-header h2 { font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700; color: #fff; }
     
     .row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
     .col { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 6px; }
     label { font-size: 12px; font-weight: 600; color: #8b949e; }
     
-    input, textarea, select { width: 100%; background: #0b0f17; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 10px 14px; color: #fff; font-size: 13px; font-family: inherit; outline: none; transition: border-color 0.15s ease; }
+    input, textarea, select { width: 100%; background: #0b0f17; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 10px 14px; color: #fff; font-size: 13px; font-family: inherit; outline: none; }
     input:focus, textarea:focus, select:focus { border-color: #5c7cfa; }
     textarea { min-height: 80px; resize: vertical; }
     
-    button { padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s ease; display: inline-flex; align-items: center; justify-content: center; gap: 6px; user-select: none; }
-    button:hover { filter: brightness(1.15); transform: translateY(-1px); }
-    button:active { transform: translateY(0); }
+    button { padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    button:hover { filter: brightness(1.15); }
     
     .btn-primary { background: #238636 !important; color: #fff !important; }
     .btn-blue { background: #5c7cfa !important; color: #fff !important; }
@@ -203,12 +200,10 @@ const DASHBOARD_HTML = `<!doctype html>
     .btn-danger { background: #da3633 !important; color: #fff !important; }
     .btn-sm { padding: 6px 11px; font-size: 11.5px; border-radius: 6px; margin-right: 4px; margin-bottom: 4px; }
     
-    /* Table */
     .table-responsive { overflow-x: auto; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); }
     .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .data-table th { text-align: left; padding: 12px 14px; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.08); color: #8b949e; font-size: 12px; }
     .data-table td { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
-    .data-table tr:hover { background: rgba(255,255,255,0.02); }
     
     .badge { padding: 3px 8px; border-radius: 6px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; display: inline-block; }
     .badge-owner { background: rgba(210, 153, 34, 0.2); color: #d29922; border: 1px solid rgba(210, 153, 34, 0.4); }
@@ -217,23 +212,16 @@ const DASHBOARD_HTML = `<!doctype html>
     .badge-banned { background: rgba(248, 81, 73, 0.2); color: #f85149; border: 1px solid rgba(248, 81, 73, 0.4); }
     .badge-active { background: rgba(46, 160, 67, 0.2); color: #3fb950; border: 1px solid rgba(46, 160, 67, 0.4); }
     
-    .actions-group { display: flex; gap: 4px; flex-wrap: wrap; }
-    .mono { font-family: monospace; font-size: 11.5px; color: #8b949e; }
-    .code-box { background: #0b0f17; border: 1px solid rgba(255,255,255,0.08); padding: 14px; border-radius: 8px; font-family: monospace; font-size: 12px; overflow-x: auto; max-height: 300px; white-space: pre-wrap; color: #7ee787; }
-    
     .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
     .stat-card { background: #0b0f17; border: 1px solid rgba(255,255,255,0.08); padding: 16px; border-radius: 10px; display: flex; flex-direction: column; gap: 6px; }
     .stat-title { font-size: 12px; color: #8b949e; }
     .stat-value { font-size: 18px; font-weight: 800; color: #fff; }
-    .sub-note { font-size: 12px; color: #8b949e; margin-bottom: 12px; }
-
-    /* Toast Notification */
+    
     #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-    .toast { padding: 14px 20px; border-radius: 10px; font-size: 13.5px; font-weight: 600; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.5); animation: slideIn 0.25s ease; max-width: 380px; pointer-events: auto; }
+    .toast { padding: 14px 20px; border-radius: 10px; font-size: 13.5px; font-weight: 600; color: #fff; max-width: 380px; pointer-events: auto; }
     .toast-success { background: #238636; border: 1px solid #2ea043; }
     .toast-error { background: #da3633; border: 1px solid #f85149; }
     .toast-info { background: #1f6feb; border: 1px solid #388bfd; }
-    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
   </style>
 </head>
 <body>
@@ -244,19 +232,18 @@ const DASHBOARD_HTML = `<!doctype html>
     <!-- Top Header -->
     <header class="main-header">
       <div class="brand-group">
-        <span class="star-logo">✦</span>
         <div>
           <h1 class="brand-title">Starly Client</h1>
           <span class="brand-sub">Панель управления</span>
         </div>
       </div>
-      <button id="btn-top-refresh" onclick="window.refreshAll()" class="btn-blue">🔄 Обновить данные</button>
+      <button id="btn-top-refresh" onclick="window.refreshAll()" class="btn-blue">Обновить данные</button>
     </header>
 
-    <!-- SECTION 1: SYSTEM STATUS -->
+    <!-- SECTION 1: STATUS -->
     <div class="card">
       <div class="card-header">
-        <h2>⚡ Статус сервера и защита</h2>
+        <h2>Статус сервера</h2>
       </div>
       <div class="status-grid">
         <div class="stat-card">
@@ -264,28 +251,26 @@ const DASHBOARD_HTML = `<!doctype html>
           <span class="stat-value" style="color: #3fb950;">ONLINE</span>
         </div>
         <div class="stat-card">
-          <span class="stat-title">Текущая версия релиза</span>
+          <span class="stat-title">Релизная версия</span>
           <span class="stat-value" id="stat-version">1.21.11</span>
         </div>
         <div class="stat-card">
-          <span class="stat-title">Бета версия (Early Access)</span>
+          <span class="stat-title">Бета версия</span>
           <span class="stat-value" style="color: #a371f7;" id="stat-beta-version">1.21.11-beta</span>
         </div>
         <div class="stat-card">
-          <span class="stat-title">Защита от обхода банов</span>
-          <span class="stat-value" style="color: #58a6ff;">HWID Lock Active</span>
+          <span class="stat-title">Защита HWID</span>
+          <span class="stat-value" style="color: #58a6ff;">Активна</span>
         </div>
       </div>
     </div>
 
-    <!-- SECTION 2: USERS LIST & MANAGEMENT -->
+    <!-- SECTION 2: USERS LIST -->
     <div class="card">
       <div class="card-header">
-        <h2>👥 Зарегистрированные аккаунты (<span id="user-count-badge">1</span>)</h2>
-        <button id="btn-refresh-users" onclick="window.loadUsers()" class="btn-blue btn-sm">🔄 Обновить список</button>
+        <h2>Зарегистрированные аккаунты (<span id="user-count-badge">1</span>)</h2>
+        <button id="btn-refresh-users" onclick="window.loadUsers()" class="btn-blue btn-sm">Обновить список</button>
       </div>
-      <p class="sub-note">Все зарегистрированные игроки. Вы можете выдавать Beta-доступ, Owner или банить по HWID.</p>
-      
       <div class="table-responsive">
         <table class="data-table">
           <thead>
@@ -293,9 +278,9 @@ const DASHBOARD_HTML = `<!doctype html>
               <th>Игрок</th>
               <th>Email</th>
               <th>Роль</th>
-              <th>HWID устройства</th>
+              <th>HWID</th>
               <th>Статус</th>
-              <th>Управление (Beta / Owner / Бан)</th>
+              <th>Управление</th>
             </tr>
           </thead>
           <tbody id="users-table-body">
@@ -303,13 +288,11 @@ const DASHBOARD_HTML = `<!doctype html>
               <td><strong>Admin</strong></td>
               <td>admin@starly.client</td>
               <td><span class="badge badge-owner">owner</span></td>
-              <td class="mono">—</td>
+              <td>—</td>
               <td><span class="badge badge-active">АКТИВЕН</span></td>
               <td>
-                <div class="actions-group">
-                  <button class="btn-purple btn-sm" onclick="window.setRole('Admin', 'beta')">✨ Выдать Beta</button>
-                  <button class="btn-danger btn-sm" onclick="window.quickBan('Admin')">🚫 Бан</button>
-                </div>
+                <button class="btn-purple btn-sm" onclick="window.setRole('Admin', 'beta')">Выдать Beta</button>
+                <button class="btn-danger btn-sm" onclick="window.quickBan('Admin')">Бан</button>
               </td>
             </tr>
           </tbody>
@@ -317,150 +300,126 @@ const DASHBOARD_HTML = `<!doctype html>
       </div>
     </div>
 
-    <!-- SECTION 3: CREATE USER & BAN USER -->
+    <!-- SECTION 3: CREATE & BAN -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
       
-      <!-- Create Account -->
+      <!-- Create Account Form -->
       <div class="card">
         <div class="card-header">
-          <h2>➕ Создать / Зарегистрировать аккаунт</h2>
+          <h2>Создать аккаунт</h2>
         </div>
         <div class="row">
           <div class="col">
-            <label>Игровой никнейм</label>
-            <input id="create-nick" value="Player1" placeholder="Введите ник">
+            <label>Никнейм</label>
+            <input id="create-nick" value="Player1" placeholder="Никнейм">
           </div>
           <div class="col">
-            <label>Email почта (необязательно)</label>
-            <input id="create-email" value="player1@starly.client" type="email" placeholder="user@gmail.com">
+            <label>Email</label>
+            <input id="create-email" value="player1@starly.client" type="email" placeholder="Email">
           </div>
         </div>
         <div class="row">
           <div class="col">
             <label>Пароль</label>
-            <input id="create-pwd" value="123456" type="text" placeholder="Введите пароль">
+            <input id="create-pwd" value="123456" type="text" placeholder="Пароль">
           </div>
           <div class="col">
             <label>Роль</label>
             <select id="create-role">
-              <option value="owner">👑 Владелец (Owner)</option>
-              <option value="beta">✨ Beta тестер</option>
-              <option value="user" selected>👤 Игрок (User)</option>
+              <option value="owner">Владелец (Owner)</option>
+              <option value="beta">Beta тестер</option>
+              <option value="user" selected>Игрок (User)</option>
             </select>
           </div>
         </div>
-        <button id="btn-create-acc" onclick="window.createAccountDirectly()" class="btn-primary" style="width: 100%; margin-top: 4px;">➕ Создать аккаунт</button>
+        <button id="btn-create-acc" onclick="window.createAccountDirectly()" class="btn-primary" style="width: 100%;">Создать аккаунт</button>
       </div>
 
-      <!-- Ban User -->
+      <!-- Ban Form -->
       <div class="card">
         <div class="card-header">
-          <h2>🚫 Бан игрока и его устройства (HWID)</h2>
+          <h2>Бан по HWID</h2>
         </div>
         <div class="row">
           <div class="col">
-            <label>Никнейм или Email</label>
-            <input id="ban-input-nick" placeholder="Никнейм игрока для бана">
+            <label>Никнейм</label>
+            <input id="ban-input-nick" placeholder="Никнейм">
           </div>
         </div>
         <div class="row">
           <div class="col">
-            <label>Причина блокировки</label>
-            <input id="ban-input-reason" value="Нарушение правил" placeholder="Причина бана">
+            <label>Причина бана</label>
+            <input id="ban-input-reason" value="Нарушение правил" placeholder="Причина">
           </div>
         </div>
-        <button id="btn-ban-action" onclick="window.submitBan()" class="btn-danger" style="width: 100%; margin-top: 4px;">🚫 Забанить (Аккаунт + HWID)</button>
+        <button id="btn-ban-action" onclick="window.submitBan()" class="btn-danger" style="width: 100%;">Забанить (HWID)</button>
       </div>
 
     </div>
 
-    <!-- SECTION 4: OTA RELEASES (RELEASE & BETA) -->
+    <!-- SECTION 4: OTA -->
     <div class="card">
       <div class="card-header">
-        <h2>🚀 Публикация обновлений клиента (OTA)</h2>
-        <button id="btn-refresh-ota" onclick="window.loadVersionData()" class="btn-blue btn-sm">🔄 Обновить версии</button>
+        <h2>Выпуск обновлений</h2>
+        <button id="btn-refresh-ota" onclick="window.loadVersionData()" class="btn-blue btn-sm">Обновить</button>
       </div>
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
         
-        <!-- Release Channel -->
+        <!-- Release -->
         <div style="background: #0b0f17; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 18px;">
-          <h3 style="color: #3fb950; margin-bottom: 12px;">📦 Релизная версия (Для всех)</h3>
+          <h3 style="color: #3fb950; margin-bottom: 12px;">Релизный канал</h3>
           <div class="row">
             <div class="col">
-              <label>Версия релиза</label>
-              <input id="ota-release-version" value="1.21.11-v1.0.1" placeholder="1.21.11-v1.0.1">
+              <label>Версия</label>
+              <input id="ota-release-version" value="1.21.11-v1.0.1">
             </div>
           </div>
           <div class="row">
             <div class="col">
-              <label>Список изменений (Changelog)</label>
-              <textarea id="ota-release-changelog" placeholder="Описание обновления для игроков...">Релиз Starly Client 1.21.11: обновленный кастомный хотбар, статус-бары, Modrinth каталог модов.</textarea>
+              <label>Changelog</label>
+              <textarea id="ota-release-changelog">Релиз обновления Starly Client 1.21.11.</textarea>
             </div>
           </div>
           <div class="row">
             <div class="col">
-              <label>Файл мода (Starly-Client-1.21.11.jar)</label>
+              <label>JAR файл</label>
               <input type="file" id="ota-release-file" accept=".jar">
             </div>
           </div>
-          <button id="btn-pub-release" onclick="window.publishRelease(false)" class="btn-primary" style="width: 100%; margin-top: 8px;">🚀 Опубликовать Релиз</button>
+          <button id="btn-pub-release" onclick="window.publishRelease(false)" class="btn-primary" style="width: 100%;">Опубликовать Релиз</button>
         </div>
 
-        <!-- Beta Channel -->
+        <!-- Beta -->
         <div style="background: #0b0f17; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 18px;">
-          <h3 style="color: #a371f7; margin-bottom: 12px;">🧪 Бета-версия (Для Beta-юзеров)</h3>
+          <h3 style="color: #a371f7; margin-bottom: 12px;">Бета канал</h3>
           <div class="row">
             <div class="col">
               <label>Beta Версия</label>
-              <input id="ota-beta-version" value="1.21.11-v1.0.1-beta" placeholder="1.21.11-v1.0.1-beta">
+              <input id="ota-beta-version" value="1.21.11-v1.0.1-beta">
             </div>
           </div>
           <div class="row">
             <div class="col">
               <label>Beta Changelog</label>
-              <textarea id="ota-beta-changelog" placeholder="Экспериментальные фичи...">Бета-версия с экспериментальными функциями и ранними обновлениями.</textarea>
+              <textarea id="ota-beta-changelog">Бета версия с ранними функциями.</textarea>
             </div>
           </div>
           <div class="row">
             <div class="col">
-              <label>Файл бета-мода (Starly-Client-1.21.11-beta.jar)</label>
+              <label>Beta JAR файл</label>
               <input type="file" id="ota-beta-file" accept=".jar">
             </div>
           </div>
-          <button id="btn-pub-beta" onclick="window.publishRelease(true)" class="btn-purple" style="width: 100%; margin-top: 8px;">⚡ Опубликовать Beta</button>
+          <button id="btn-pub-beta" onclick="window.publishRelease(true)" class="btn-purple" style="width: 100%;">Опубликовать Beta</button>
         </div>
 
       </div>
-    </div>
-
-    <!-- SECTION 5: COSMETICS & MARKERS -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
-      
-      <!-- Cosmetics -->
-      <div class="card">
-        <div class="card-header">
-          <h2>✨ Активная косметика и аватары</h2>
-          <button id="btn-refresh-cosmetics" onclick="window.loadCosmetics()" class="btn-blue btn-sm">🔄 Обновить</button>
-        </div>
-        <pre id="cosmetics-json" class="code-box">Загрузка данных косметики...</pre>
-      </div>
-
-      <!-- Markers -->
-      <div class="card">
-        <div class="card-header">
-          <h2>📍 Метки игроков на серверах</h2>
-          <button id="btn-refresh-markers" onclick="window.loadMarkers()" class="btn-blue btn-sm">🔄 Обновить</button>
-        </div>
-        <pre id="markers-json" class="code-box">Загрузка меток...</pre>
-      </div>
-
     </div>
 
   </div>
 
   <script>
-    // Global Toast
     window.showToast = function(msg, type) {
       type = type || 'info';
       var container = document.getElementById('toast-container');
@@ -476,11 +435,9 @@ const DASHBOARD_HTML = `<!doctype html>
     };
 
     window.refreshAll = function() {
-      window.showToast('Обновление данных...', 'info');
+      window.showToast('Обновление...', 'info');
       window.loadUsers();
       window.loadVersionData();
-      window.loadCosmetics();
-      window.loadMarkers();
     };
 
     window.createAccountDirectly = function() {
@@ -496,12 +453,10 @@ const DASHBOARD_HTML = `<!doctype html>
       var role = roleInput ? roleInput.value : 'user';
 
       if (!nick) {
-        window.showToast('Введите никнейм!', 'error');
         alert('Введите никнейм!');
         return;
       }
       if (!pwd) {
-        window.showToast('Введите пароль!', 'error');
         alert('Введите пароль!');
         return;
       }
@@ -509,7 +464,7 @@ const DASHBOARD_HTML = `<!doctype html>
         email = nick.toLowerCase().replace(/[^a-z0-9]/g, '') + '@starly.client';
       }
 
-      if (btn) btn.textContent = '⏳ Создание...';
+      if (btn) btn.textContent = 'Создание...';
 
       fetch('/api/auth/register', {
         method: 'POST',
@@ -518,7 +473,7 @@ const DASHBOARD_HTML = `<!doctype html>
       })
       .then(function(r) { return r.json(); })
       .then(function(res) {
-        if (btn) btn.textContent = '➕ Создать аккаунт';
+        if (btn) btn.textContent = 'Создать аккаунт';
         if (res.success) {
           if (role !== 'user') {
             fetch('/api/user/set-role', {
@@ -527,18 +482,15 @@ const DASHBOARD_HTML = `<!doctype html>
               body: JSON.stringify({ nickname: nick, role: role })
             }).then(function() { window.loadUsers(); });
           }
-          window.showToast('Аккаунт ' + nick + ' успешно создан!', 'success');
           alert('Аккаунт ' + nick + ' успешно создан!');
           window.loadUsers();
         } else {
-          window.showToast('Ошибка: ' + (res.error || 'Не удалось создать'), 'error');
           alert('Ошибка: ' + (res.error || 'Не удалось создать'));
         }
       })
       .catch(function(err) {
-        if (btn) btn.textContent = '➕ Создать аккаунт';
-        window.showToast('Сетевая ошибка: ' + err.message, 'error');
-        alert('Сетевая ошибка: ' + err.message);
+        if (btn) btn.textContent = 'Создать аккаунт';
+        alert('Ошибка: ' + err.message);
       });
     };
 
@@ -561,35 +513,34 @@ const DASHBOARD_HTML = `<!doctype html>
           for (var i = 0; i < users.length; i++) {
             var u = users[i];
             var nick = u.nickname || 'Unknown';
-            var email = u.email || '—';
+            var email = u.email || '-';
             var role = u.role || 'user';
-            var hwidShort = u.hwid ? window.escapeHtml(u.hwid.substring(0, 16)) + '...' : '—';
+            var hwidShort = u.hwid ? window.escapeHtml(u.hwid.substring(0, 16)) + '...' : '-';
             var badgeClass = 'badge-' + role;
             var statusBadge = u.banned 
-              ? '<span class="badge badge-banned">ЗАБАНЕН (' + window.escapeHtml(u.banReason || 'Бан') + ')</span>' 
+              ? '<span class="badge badge-banned">ЗАБАНЕН</span>' 
               : '<span class="badge badge-active">АКТИВЕН</span>';
 
-            var roleButtons = '<div class="actions-group">';
+            var roleButtons = '';
             if (role !== 'beta') {
-              roleButtons += '<button class="btn-purple btn-sm" onclick="window.setRole(\'' + window.escapeHtml(nick) + '\', \'beta\')">✨ Выдать Beta</button>';
+              roleButtons += '<button class="btn-purple btn-sm" onclick="window.setRole(\'' + window.escapeHtml(nick) + '\', \'beta\')">Выдать Beta</button> ';
             } else {
-              roleButtons += '<button class="btn-blue btn-sm" onclick="window.setRole(\'' + window.escapeHtml(nick) + '\', \'user\')">Снять Beta</button>';
+              roleButtons += '<button class="btn-blue btn-sm" onclick="window.setRole(\'' + window.escapeHtml(nick) + '\', \'user\')">Снять Beta</button> ';
             }
             if (role !== 'owner') {
-              roleButtons += '<button class="btn-primary btn-sm" onclick="window.setRole(\'' + window.escapeHtml(nick) + '\', \'owner\')">👑 Owner</button>';
+              roleButtons += '<button class="btn-primary btn-sm" onclick="window.setRole(\'' + window.escapeHtml(nick) + '\', \'owner\')">Owner</button> ';
             }
             if (u.banned) {
-              roleButtons += '<button class="btn-primary btn-sm" onclick="window.unban(\'' + window.escapeHtml(nick) + '\')">✅ Разбанить</button>';
+              roleButtons += '<button class="btn-primary btn-sm" onclick="window.unban(\'' + window.escapeHtml(nick) + '\')">Разбанить</button>';
             } else {
-              roleButtons += '<button class="btn-danger btn-sm" onclick="window.quickBan(\'' + window.escapeHtml(nick) + '\')">🚫 Бан</button>';
+              roleButtons += '<button class="btn-danger btn-sm" onclick="window.quickBan(\'' + window.escapeHtml(nick) + '\')">Бан</button>';
             }
-            roleButtons += '</div>';
 
             html += '<tr>' +
               '<td><strong>' + window.escapeHtml(nick) + '</strong></td>' +
               '<td>' + window.escapeHtml(email) + '</td>' +
               '<td><span class="badge ' + badgeClass + '">' + window.escapeHtml(role) + '</span></td>' +
-              '<td class="mono">' + hwidShort + '</td>' +
+              '<td>' + hwidShort + '</td>' +
               '<td>' + statusBadge + '</td>' +
               '<td>' + roleButtons + '</td>' +
               '</tr>';
@@ -610,11 +561,9 @@ const DASHBOARD_HTML = `<!doctype html>
       .then(function(res) { return res.json(); })
       .then(function(data) {
         if (data.success) {
-          window.showToast('Роль игрока ' + nick + ' изменена на ' + role, 'success');
           alert('Роль игрока ' + nick + ' изменена на ' + role);
           window.loadUsers();
         } else {
-          window.showToast('Ошибка: ' + (data.error || 'Не удалось сменить роль'), 'error');
           alert('Ошибка: ' + (data.error || 'Не удалось сменить роль'));
         }
       });
@@ -626,7 +575,6 @@ const DASHBOARD_HTML = `<!doctype html>
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nickname: nick })
       }).then(function() {
-        window.showToast('Игрок ' + nick + ' разбанен!', 'success');
         alert('Игрок ' + nick + ' разбанен!');
         window.loadUsers();
       });
@@ -640,7 +588,6 @@ const DASHBOARD_HTML = `<!doctype html>
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ nickname: nick, reason: reason })
         }).then(function() {
-          window.showToast('Игрок ' + nick + ' забанен по HWID', 'error');
           alert('Игрок ' + nick + ' забанен по HWID');
           window.loadUsers();
         });
@@ -652,15 +599,11 @@ const DASHBOARD_HTML = `<!doctype html>
       var reasonInput = document.getElementById('ban-input-reason');
       var nick = nickInput ? nickInput.value.trim() : '';
       var reason = (reasonInput ? reasonInput.value.trim() : '') || 'Заблокирован администратором';
-      var btn = document.getElementById('btn-ban-action');
 
       if (!nick) {
-        window.showToast('Введите никнейм игрока для бана!', 'error');
-        alert('Введите никнейм игрока для бана!');
+        alert('Введите никнейм для бана!');
         return;
       }
-
-      if (btn) btn.textContent = '⏳ Блокировка...';
 
       fetch('/api/user/ban', {
         method: 'POST',
@@ -669,20 +612,15 @@ const DASHBOARD_HTML = `<!doctype html>
       })
       .then(function(res) { return res.json(); })
       .then(function(data) {
-        if (btn) btn.textContent = '🚫 Забанить (Аккаунт + HWID)';
         if (data.success) {
-          window.showToast(data.message, 'success');
           alert(data.message);
           if (nickInput) nickInput.value = '';
           window.loadUsers();
         } else {
-          window.showToast('Ошибка: ' + (data.error || 'Не удалось забанить'), 'error');
           alert('Ошибка: ' + (data.error || 'Не удалось забанить'));
         }
       })
       .catch(function(e) {
-        if (btn) btn.textContent = '🚫 Забанить (Аккаунт + HWID)';
-        window.showToast('Ошибка: ' + e.message, 'error');
         alert('Ошибка: ' + e.message);
       });
     };
@@ -711,18 +649,14 @@ const DASHBOARD_HTML = `<!doctype html>
       var verInput = document.getElementById(isBeta ? 'ota-beta-version' : 'ota-release-version');
       var logInput = document.getElementById(isBeta ? 'ota-beta-changelog' : 'ota-release-changelog');
       var fileInput = document.getElementById(isBeta ? 'ota-beta-file' : 'ota-release-file');
-      var btn = document.getElementById(isBeta ? 'btn-pub-beta' : 'btn-pub-release');
 
       var version = verInput ? verInput.value.trim() : '';
       var changelog = logInput ? logInput.value.trim() : '';
 
       if (!version) {
-        window.showToast('Укажите версию обновления!', 'error');
         alert('Укажите версию обновления!');
         return;
       }
-
-      if (btn) btn.textContent = '⏳ Публикация...';
 
       fetch('/api/loader/set-version', {
         method: 'POST',
@@ -741,43 +675,19 @@ const DASHBOARD_HTML = `<!doctype html>
               headers: { 'Content-Type': 'application/octet-stream' },
               body: buffer
             }).then(function() {
-              if (btn) btn.textContent = isBeta ? '⚡ Опубликовать Beta' : '🚀 Опубликовать Релиз';
-              window.showToast((isBeta ? 'Beta' : 'Релизное') + ' обновление с JAR файлом успешно опубликовано!', 'success');
               alert((isBeta ? 'Beta' : 'Релизное') + ' обновление с JAR файлом успешно опубликовано!');
               window.loadVersionData();
             });
           };
           reader.readAsArrayBuffer(file);
         } else {
-          if (btn) btn.textContent = isBeta ? '⚡ Опубликовать Beta' : '🚀 Опубликовать Релиз';
-          window.showToast((isBeta ? 'Beta' : 'Релизное') + ' обновление опубликовано (версия обновлена)!', 'success');
           alert((isBeta ? 'Beta' : 'Релизное') + ' обновление опубликовано (версия обновлена)!');
           window.loadVersionData();
         }
       })
       .catch(function(err) {
-        if (btn) btn.textContent = isBeta ? '⚡ Опубликовать Beta' : '🚀 Опубликовать Релиз';
-        window.showToast('Ошибка публикации: ' + err.message, 'error');
         alert('Ошибка публикации: ' + err.message);
       });
-    };
-
-    window.loadCosmetics = function() {
-      var box = document.getElementById('cosmetics-json');
-      if (!box) return;
-      fetch('/api/cosmetics/all')
-        .then(function(res) { return res.json(); })
-        .then(function(data) { box.textContent = JSON.stringify(data, null, 2); })
-        .catch(function(e) { box.textContent = 'Ошибка загрузки: ' + e.message; });
-    };
-
-    window.loadMarkers = function() {
-      var box = document.getElementById('markers-json');
-      if (!box) return;
-      fetch('/api/markers')
-        .then(function(res) { return res.json(); })
-        .then(function(data) { box.textContent = JSON.stringify(data, null, 2); })
-        .catch(function(e) { box.textContent = 'Ошибка загрузки: ' + e.message; });
     };
 
     window.escapeHtml = function(str) {
@@ -786,7 +696,7 @@ const DASHBOARD_HTML = `<!doctype html>
       });
     };
 
-    // Immediate Initialization on load
+    // Auto-load
     window.loadUsers();
     window.loadVersionData();
     setInterval(window.loadUsers, 2500);
@@ -1166,5 +1076,5 @@ app.post('/api/markers', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[StarlyServer] Running on port ${PORT} with Global Window Click Bindings`);
+  console.log(`[StarlyServer] Running on port ${PORT}`);
 });
