@@ -1,0 +1,26 @@
+{
+  "admin@starly.client": {
+    "email": "admin@starly.client",
+    "nickname": "Admin",
+    "passwordHash": "a8b47cbf49ddb943f83763e31b84f58a1a0aa5691b63ca07ee3ba2cfc42fb465",
+    "hwid": "",
+    "role": "owner",
+    "customEarlyAccess": true,
+    "banned": false,
+    "banReason": "",
+    "registeredAt": "2026-08-23T16:50:38.160Z",
+    "lastLoginAt": "2026-08-23T16:50:38.168Z"
+  },
+  "player1@starly.client": {
+    "email": "player1@starly.client",
+    "nickname": "Player1",
+    "passwordHash": "1f095598fd62a94493116c5f2218c1152917bd73cb9ed40fc473115fb35e2767",
+    "hwid": "",
+    "role": "user",
+    "customEarlyAccess": false,
+    "banned": false,
+    "banReason": "",
+    "registeredAt": "2026-08-23T16:53:06.356Z",
+    "lastLoginAt": "2026-08-23T16:53:06.356Z"
+  }
+}

@@ -7,17 +7,14 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const PASSWORD_SALT = 'STARLY_AUTH_SALT_v1_2026';
 
-// CORS & CSP
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-version, x-changelog, x-channel, x-hwid');
-  res.header('Content-Security-Policy', "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;");
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
 
-// Parsers
 app.use(express.json({ limit: '150mb' }));
 app.use(express.urlencoded({ extended: true, limit: '150mb' }));
 app.use(express.raw({ type: 'application/octet-stream', limit: '150mb' }));
@@ -35,7 +32,6 @@ if (!fs.existsSync(STORAGE_DIR)) {
   fs.mkdirSync(STORAGE_DIR, { recursive: true });
 }
 
-// 1. Cosmetics
 let cosmeticsData = {};
 if (fs.existsSync(DATA_FILE)) {
   try { cosmeticsData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); } catch (e) { cosmeticsData = {}; }
@@ -44,7 +40,6 @@ function saveCosmeticsData() {
   try { fs.writeFileSync(DATA_FILE, JSON.stringify(cosmeticsData, null, 2), 'utf8'); } catch (e) {}
 }
 
-// 2. Accounts
 let accounts = {};
 if (fs.existsSync(ACCOUNTS_FILE)) {
   try { accounts = JSON.parse(fs.readFileSync(ACCOUNTS_FILE, 'utf8')); } catch (e) { accounts = {}; }
@@ -54,7 +49,6 @@ function hashPassword(pwd) {
   return crypto.createHash('sha256').update(pwd + PASSWORD_SALT).digest('hex');
 }
 
-// Default Admin Account
 if (Object.keys(accounts).length === 0) {
   accounts['admin@starly.client'] = {
     email: 'admin@starly.client',
@@ -83,7 +77,6 @@ function saveBannedHwids() {
   try { fs.writeFileSync(BANNED_HWIDS_FILE, JSON.stringify(bannedHwids, null, 2), 'utf8'); } catch (e) {}
 }
 
-// 3. Markers
 let markers = [];
 if (fs.existsSync(MARKERS_FILE)) {
   try { markers = JSON.parse(fs.readFileSync(MARKERS_FILE, 'utf8')); } catch (e) { markers = []; }
@@ -92,12 +85,11 @@ function saveMarkers() {
   try { fs.writeFileSync(MARKERS_FILE, JSON.stringify(markers, null, 2), 'utf8'); } catch (e) {}
 }
 
-// 4. OTA
 let versionData = {
   version: '1.21.11-v1.0.0',
   betaVersion: '1.21.11-v1.0.0-beta',
-  changelog: 'Starly Client 1.21.11: Custom Hotbar, Status Bars, Modrinth catalog.',
-  betaChangelog: 'Beta channel with early experimental updates.',
+  changelog: 'Starly Client 1.21.11 Release',
+  betaChangelog: 'Starly Client 1.21.11 Beta channel',
   updatedAt: new Date().toISOString(),
   betaUpdatedAt: new Date().toISOString()
 };
@@ -115,8 +107,8 @@ function isHwidBanned(hwid) {
 }
 
 function getHwidBanReason(hwid) {
-  if (!hwid) return 'Устройство заблокировано';
-  return bannedHwids[hwid.toLowerCase().trim()] || 'Устройство заблокировано в системе';
+  if (!hwid) return 'Blocked';
+  return bannedHwids[hwid.toLowerCase().trim()] || 'Device banned';
 }
 
 function generateToken(user) {
@@ -159,9 +151,8 @@ function verifyToken(token) {
   }
 }
 
-// ==================== DASHBOARD HTML ====================
 const DASHBOARD_HTML = `<!doctype html>
-<html lang="ru">
+<html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -175,7 +166,6 @@ const DASHBOARD_HTML = `<!doctype html>
     .container { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
     
     .main-header { display: flex; justify-content: space-between; align-items: center; background: #131a26; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 20px 28px; }
-    .brand-group { display: flex; align-items: center; gap: 12px; }
     .brand-title { font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; color: #fff; }
     .brand-sub { color: #5c7cfa; font-size: 14px; font-weight: 600; }
     
@@ -216,31 +206,19 @@ const DASHBOARD_HTML = `<!doctype html>
     .stat-card { background: #0b0f17; border: 1px solid rgba(255,255,255,0.08); padding: 16px; border-radius: 10px; display: flex; flex-direction: column; gap: 6px; }
     .stat-title { font-size: 12px; color: #8b949e; }
     .stat-value { font-size: 18px; font-weight: 800; color: #fff; }
-    
-    #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-    .toast { padding: 14px 20px; border-radius: 10px; font-size: 13.5px; font-weight: 600; color: #fff; max-width: 380px; pointer-events: auto; }
-    .toast-success { background: #238636; border: 1px solid #2ea043; }
-    .toast-error { background: #da3633; border: 1px solid #f85149; }
-    .toast-info { background: #1f6feb; border: 1px solid #388bfd; }
   </style>
 </head>
 <body>
-  <div id="toast-container"></div>
-
   <div class="container">
     
-    <!-- Top Header -->
     <header class="main-header">
-      <div class="brand-group">
-        <div>
-          <h1 class="brand-title">Starly Client</h1>
-          <span class="brand-sub">Панель управления</span>
-        </div>
+      <div>
+        <h1 class="brand-title">Starly Client</h1>
+        <span class="brand-sub">Панель управления</span>
       </div>
       <button id="btn-top-refresh" onclick="window.refreshAll()" class="btn-blue">Обновить данные</button>
     </header>
 
-    <!-- SECTION 1: STATUS -->
     <div class="card">
       <div class="card-header">
         <h2>Статус сервера</h2>
@@ -265,7 +243,6 @@ const DASHBOARD_HTML = `<!doctype html>
       </div>
     </div>
 
-    <!-- SECTION 2: USERS LIST -->
     <div class="card">
       <div class="card-header">
         <h2>Зарегистрированные аккаунты (<span id="user-count-badge">1</span>)</h2>
@@ -288,7 +265,7 @@ const DASHBOARD_HTML = `<!doctype html>
               <td><strong>Admin</strong></td>
               <td>admin@starly.client</td>
               <td><span class="badge badge-owner">owner</span></td>
-              <td>—</td>
+              <td>-</td>
               <td><span class="badge badge-active">АКТИВЕН</span></td>
               <td>
                 <button class="btn-purple btn-sm" onclick="window.setRole('Admin', 'beta')">Выдать Beta</button>
@@ -300,10 +277,8 @@ const DASHBOARD_HTML = `<!doctype html>
       </div>
     </div>
 
-    <!-- SECTION 3: CREATE & BAN -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
       
-      <!-- Create Account Form -->
       <div class="card">
         <div class="card-header">
           <h2>Создать аккаунт</h2>
@@ -335,7 +310,6 @@ const DASHBOARD_HTML = `<!doctype html>
         <button id="btn-create-acc" onclick="window.createAccountDirectly()" class="btn-primary" style="width: 100%;">Создать аккаунт</button>
       </div>
 
-      <!-- Ban Form -->
       <div class="card">
         <div class="card-header">
           <h2>Бан по HWID</h2>
@@ -357,7 +331,6 @@ const DASHBOARD_HTML = `<!doctype html>
 
     </div>
 
-    <!-- SECTION 4: OTA -->
     <div class="card">
       <div class="card-header">
         <h2>Выпуск обновлений</h2>
@@ -366,7 +339,6 @@ const DASHBOARD_HTML = `<!doctype html>
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
         
-        <!-- Release -->
         <div style="background: #0b0f17; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 18px;">
           <h3 style="color: #3fb950; margin-bottom: 12px;">Релизный канал</h3>
           <div class="row">
@@ -390,7 +362,6 @@ const DASHBOARD_HTML = `<!doctype html>
           <button id="btn-pub-release" onclick="window.publishRelease(false)" class="btn-primary" style="width: 100%;">Опубликовать Релиз</button>
         </div>
 
-        <!-- Beta -->
         <div style="background: #0b0f17; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 18px;">
           <h3 style="color: #a371f7; margin-bottom: 12px;">Бета канал</h3>
           <div class="row">
@@ -419,301 +390,23 @@ const DASHBOARD_HTML = `<!doctype html>
 
   </div>
 
-  <script>
-    window.showToast = function(msg, type) {
-      type = type || 'info';
-      var container = document.getElementById('toast-container');
-      if (!container) return;
-      var t = document.createElement('div');
-      t.className = 'toast toast-' + type;
-      t.textContent = msg;
-      container.appendChild(t);
-      setTimeout(function() {
-        t.style.opacity = '0';
-        setTimeout(function() { t.remove(); }, 300);
-      }, 3500);
-    };
-
-    window.refreshAll = function() {
-      window.showToast('Обновление...', 'info');
-      window.loadUsers();
-      window.loadVersionData();
-    };
-
-    window.createAccountDirectly = function() {
-      var nickInput = document.getElementById('create-nick');
-      var emailInput = document.getElementById('create-email');
-      var pwdInput = document.getElementById('create-pwd');
-      var roleInput = document.getElementById('create-role');
-      var btn = document.getElementById('btn-create-acc');
-
-      var nick = (nickInput ? nickInput.value : '').trim();
-      var email = (emailInput ? emailInput.value : '').trim();
-      var pwd = (pwdInput ? pwdInput.value : '').trim();
-      var role = roleInput ? roleInput.value : 'user';
-
-      if (!nick) {
-        alert('Введите никнейм!');
-        return;
-      }
-      if (!pwd) {
-        alert('Введите пароль!');
-        return;
-      }
-      if (!email || email.indexOf('@') === -1) {
-        email = nick.toLowerCase().replace(/[^a-z0-9]/g, '') + '@starly.client';
-      }
-
-      if (btn) btn.textContent = 'Создание...';
-
-      fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nickname: nick, email: email, password: pwd })
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(res) {
-        if (btn) btn.textContent = 'Создать аккаунт';
-        if (res.success) {
-          if (role !== 'user') {
-            fetch('/api/user/set-role', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ nickname: nick, role: role })
-            }).then(function() { window.loadUsers(); });
-          }
-          alert('Аккаунт ' + nick + ' успешно создан!');
-          window.loadUsers();
-        } else {
-          alert('Ошибка: ' + (res.error || 'Не удалось создать'));
-        }
-      })
-      .catch(function(err) {
-        if (btn) btn.textContent = 'Создать аккаунт';
-        alert('Ошибка: ' + err.message);
-      });
-    };
-
-    window.loadUsers = function() {
-      var tbody = document.getElementById('users-table-body');
-      var badge = document.getElementById('user-count-badge');
-      if (!tbody) return;
-
-      fetch('/api/users')
-        .then(function(res) { return res.json(); })
-        .then(function(users) {
-          if (!users || !Array.isArray(users)) return;
-          if (badge) badge.textContent = users.length;
-          if (users.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #8b949e; padding: 24px;">Аккаунтов пока нет. Нажмите «Создать аккаунт» выше!</td></tr>';
-            return;
-          }
-
-          var html = '';
-          for (var i = 0; i < users.length; i++) {
-            var u = users[i];
-            var nick = u.nickname || 'Unknown';
-            var email = u.email || '-';
-            var role = u.role || 'user';
-            var hwidShort = u.hwid ? window.escapeHtml(u.hwid.substring(0, 16)) + '...' : '-';
-            var badgeClass = 'badge-' + role;
-            var statusBadge = u.banned 
-              ? '<span class="badge badge-banned">ЗАБАНЕН</span>' 
-              : '<span class="badge badge-active">АКТИВЕН</span>';
-
-            var roleButtons = '';
-            if (role !== 'beta') {
-              roleButtons += '<button class="btn-purple btn-sm" onclick="window.setRole(\'' + window.escapeHtml(nick) + '\', \'beta\')">Выдать Beta</button> ';
-            } else {
-              roleButtons += '<button class="btn-blue btn-sm" onclick="window.setRole(\'' + window.escapeHtml(nick) + '\', \'user\')">Снять Beta</button> ';
-            }
-            if (role !== 'owner') {
-              roleButtons += '<button class="btn-primary btn-sm" onclick="window.setRole(\'' + window.escapeHtml(nick) + '\', \'owner\')">Owner</button> ';
-            }
-            if (u.banned) {
-              roleButtons += '<button class="btn-primary btn-sm" onclick="window.unban(\'' + window.escapeHtml(nick) + '\')">Разбанить</button>';
-            } else {
-              roleButtons += '<button class="btn-danger btn-sm" onclick="window.quickBan(\'' + window.escapeHtml(nick) + '\')">Бан</button>';
-            }
-
-            html += '<tr>' +
-              '<td><strong>' + window.escapeHtml(nick) + '</strong></td>' +
-              '<td>' + window.escapeHtml(email) + '</td>' +
-              '<td><span class="badge ' + badgeClass + '">' + window.escapeHtml(role) + '</span></td>' +
-              '<td>' + hwidShort + '</td>' +
-              '<td>' + statusBadge + '</td>' +
-              '<td>' + roleButtons + '</td>' +
-              '</tr>';
-          }
-          tbody.innerHTML = html;
-        })
-        .catch(function(err) {
-          console.error('loadUsers error:', err);
-        });
-    };
-
-    window.setRole = function(nick, role) {
-      fetch('/api/user/set-role', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nickname: nick, role: role })
-      })
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-        if (data.success) {
-          alert('Роль игрока ' + nick + ' изменена на ' + role);
-          window.loadUsers();
-        } else {
-          alert('Ошибка: ' + (data.error || 'Не удалось сменить роль'));
-        }
-      });
-    };
-
-    window.unban = function(nick) {
-      fetch('/api/user/unban', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nickname: nick })
-      }).then(function() {
-        alert('Игрок ' + nick + ' разбанен!');
-        window.loadUsers();
-      });
-    };
-
-    window.quickBan = function(nick) {
-      var reason = prompt('Причина бана для игрока ' + nick + ':', 'Нарушение правил');
-      if (reason) {
-        fetch('/api/user/ban', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nickname: nick, reason: reason })
-        }).then(function() {
-          alert('Игрок ' + nick + ' забанен по HWID');
-          window.loadUsers();
-        });
-      }
-    };
-
-    window.submitBan = function() {
-      var nickInput = document.getElementById('ban-input-nick');
-      var reasonInput = document.getElementById('ban-input-reason');
-      var nick = nickInput ? nickInput.value.trim() : '';
-      var reason = (reasonInput ? reasonInput.value.trim() : '') || 'Заблокирован администратором';
-
-      if (!nick) {
-        alert('Введите никнейм для бана!');
-        return;
-      }
-
-      fetch('/api/user/ban', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nickname: nick, reason: reason })
-      })
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-        if (data.success) {
-          alert(data.message);
-          if (nickInput) nickInput.value = '';
-          window.loadUsers();
-        } else {
-          alert('Ошибка: ' + (data.error || 'Не удалось забанить'));
-        }
-      })
-      .catch(function(e) {
-        alert('Ошибка: ' + e.message);
-      });
-    };
-
-    window.loadVersionData = function() {
-      fetch('/api/loader/version')
-        .then(function(res) { return res.json(); })
-        .then(function(v) {
-          var rVer = document.getElementById('ota-release-version');
-          var rLog = document.getElementById('ota-release-changelog');
-          var bVer = document.getElementById('ota-beta-version');
-          var bLog = document.getElementById('ota-beta-changelog');
-          var statV = document.getElementById('stat-version');
-          var statBV = document.getElementById('stat-beta-version');
-
-          if (rVer && v.version) rVer.value = v.version;
-          if (rLog && v.changelog) rLog.value = v.changelog;
-          if (bVer && v.betaVersion) bVer.value = v.betaVersion;
-          if (bLog && v.betaChangelog) bLog.value = v.betaChangelog;
-          if (statV) statV.textContent = v.version || '1.21.11';
-          if (statBV) statBV.textContent = v.betaVersion || '1.21.11-beta';
-        });
-    };
-
-    window.publishRelease = function(isBeta) {
-      var verInput = document.getElementById(isBeta ? 'ota-beta-version' : 'ota-release-version');
-      var logInput = document.getElementById(isBeta ? 'ota-beta-changelog' : 'ota-release-changelog');
-      var fileInput = document.getElementById(isBeta ? 'ota-beta-file' : 'ota-release-file');
-
-      var version = verInput ? verInput.value.trim() : '';
-      var changelog = logInput ? logInput.value.trim() : '';
-
-      if (!version) {
-        alert('Укажите версию обновления!');
-        return;
-      }
-
-      fetch('/api/loader/set-version', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ version: version, changelog: changelog, isBeta: isBeta })
-      })
-      .then(function() {
-        if (fileInput && fileInput.files.length > 0) {
-          var file = fileInput.files[0];
-          var reader = new FileReader();
-          reader.onload = function() {
-            var buffer = reader.result;
-            var uploadEndpoint = isBeta ? '/api/loader/upload-beta' : '/api/loader/upload';
-            fetch(uploadEndpoint, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/octet-stream' },
-              body: buffer
-            }).then(function() {
-              alert((isBeta ? 'Beta' : 'Релизное') + ' обновление с JAR файлом успешно опубликовано!');
-              window.loadVersionData();
-            });
-          };
-          reader.readAsArrayBuffer(file);
-        } else {
-          alert((isBeta ? 'Beta' : 'Релизное') + ' обновление опубликовано (версия обновлена)!');
-          window.loadVersionData();
-        }
-      })
-      .catch(function(err) {
-        alert('Ошибка публикации: ' + err.message);
-      });
-    };
-
-    window.escapeHtml = function(str) {
-      return (str || '').replace(/[&<>"']/g, function(m) {
-        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
-      });
-    };
-
-    // Auto-load
-    window.loadUsers();
-    window.loadVersionData();
-    setInterval(window.loadUsers, 2500);
-  </script>
+  <script src="/app.js"></script>
 </body>
 </html>`;
 
 app.get('/', (req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
   res.send(DASHBOARD_HTML);
 });
 
-// ==================== AUTH & REGISTRATION API ====================
+app.get('/app.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.sendFile(path.join(__dirname, 'app.js'));
+});
 
+// APIs
 app.post('/api/auth/register', (req, res) => {
   const { email, nickname, password, hwid } = req.body;
   if (!nickname || !password) {
@@ -882,7 +575,6 @@ app.get('/api/auth/verify', (req, res) => {
   });
 });
 
-// Admin: Ban User & HWID
 app.post('/api/user/ban', (req, res) => {
   const { nickname, email, reason, banHwid } = req.body;
   const acc = Object.values(accounts).find(a => 
@@ -906,7 +598,6 @@ app.post('/api/user/ban', (req, res) => {
   res.json({ success: true, message: `Пользователь ${acc.nickname} и HWID (${acc.hwid}) забанены`, user: acc });
 });
 
-// Admin: Unban User
 app.post('/api/user/unban', (req, res) => {
   const { nickname, email } = req.body;
   const acc = Object.values(accounts).find(a => 
@@ -930,7 +621,6 @@ app.post('/api/user/unban', (req, res) => {
   res.json({ success: true, message: `Пользователь ${acc.nickname} разбанен`, user: acc });
 });
 
-// Admin: Set Role
 app.post('/api/user/set-role', (req, res) => {
   const { nickname, role } = req.body;
   const acc = Object.values(accounts).find(a => a.nickname.toLowerCase() === (nickname || '').toLowerCase());
@@ -942,7 +632,6 @@ app.post('/api/user/set-role', (req, res) => {
   res.json({ success: true, user: acc });
 });
 
-// Admin: List all accounts
 app.get('/api/users', (req, res) => {
   const list = Object.values(accounts).map(a => ({
     email: a.email,
@@ -956,8 +645,6 @@ app.get('/api/users', (req, res) => {
   }));
   res.json(list);
 });
-
-// ==================== OTA RELEASES & VERSION CONTROL ====================
 
 app.post('/api/loader/set-version', (req, res) => {
   const { version, changelog, isBeta } = req.body;
@@ -1016,63 +703,6 @@ app.get('/api/loader/download-beta', (req, res) => {
   } else {
     res.status(404).json({ error: 'Jar not found' });
   }
-});
-
-// ==================== COSMETICS & MARKERS API ====================
-
-app.get('/api/cosmetics/all', (req, res) => {
-  res.json(cosmeticsData);
-});
-
-app.get('/api/cosmetics/:id', (req, res) => {
-  const id = req.params.id.toLowerCase();
-  let match = cosmeticsData[id];
-  if (!match) {
-    for (const key of Object.keys(cosmeticsData)) {
-      const u = cosmeticsData[key];
-      if (key.toLowerCase() === id || (u.name && u.name.toLowerCase() === id) || (u.uuid && u.uuid.toLowerCase() === id)) {
-        match = u;
-        break;
-      }
-    }
-  }
-  if (match) {
-    res.json(match.cosmetics || match);
-  } else {
-    res.json([]);
-  }
-});
-
-app.post('/api/cosmetics', (req, res) => {
-  const body = req.body;
-  if (!body) return res.status(400).json({ error: 'Empty body' });
-
-  const uuid = (body.uuid || body.name || 'unknown').toLowerCase();
-  cosmeticsData[uuid] = body;
-  saveCosmeticsData();
-  res.json({ success: true });
-});
-
-app.get('/api/markers', (req, res) => {
-  res.json(markers);
-});
-
-app.post('/api/markers', (req, res) => {
-  const marker = req.body;
-  if (!marker || !marker.owner || !marker.name) {
-    return res.status(400).json({ error: 'Invalid marker data' });
-  }
-
-  const qOwner = marker.owner.toLowerCase();
-  const qName = marker.name.toLowerCase();
-  markers = markers.filter(m =>
-    !((m.owner && m.owner.toLowerCase() === qOwner) || (m.name && m.name.toLowerCase() === qName))
-  );
-
-  marker.createdAt = Date.now();
-  markers.push(marker);
-  saveMarkers();
-  res.json({ success: true, count: markers.length });
 });
 
 app.listen(PORT, () => {
