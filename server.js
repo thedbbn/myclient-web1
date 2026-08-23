@@ -154,8 +154,8 @@ const DASHBOARD_HTML = `<!doctype html>
     
     /* Content Area */
     .content { flex: 1; padding: 32px 40px; overflow-y: auto; }
-    .page-section { display: none !important; }
-    .page-section.active { display: block !important; }
+    .page-section { display: none; }
+    .page-section.active { display: block; }
     
     .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
     .page-header h2 { font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 700; color: #fff; }
@@ -216,11 +216,11 @@ const DASHBOARD_HTML = `<!doctype html>
         </div>
       </div>
       <nav class="nav-menu">
-        <button id="nav-btn-users" class="nav-tab-btn active" data-target="users">👥 Пользователи и Бан-лист</button>
-        <button id="nav-btn-ota" class="nav-tab-btn" data-target="ota">🚀 Выпуск обновлений (OTA)</button>
-        <button id="nav-btn-cosmetics" class="nav-tab-btn" data-target="cosmetics">✨ Косметика и Аватары</button>
-        <button id="nav-btn-markers" class="nav-tab-btn" data-target="markers">📍 Метки игроков</button>
-        <button id="nav-btn-status" class="nav-tab-btn" data-target="status">⚡ Статус сервера</button>
+        <button id="nav-btn-users" class="nav-tab-btn active" onclick="showTab('users')">👥 Пользователи и Бан-лист</button>
+        <button id="nav-btn-ota" class="nav-tab-btn" onclick="showTab('ota')">🚀 Выпуск обновлений (OTA)</button>
+        <button id="nav-btn-cosmetics" class="nav-tab-btn" onclick="showTab('cosmetics')">✨ Косметика и Аватары</button>
+        <button id="nav-btn-markers" class="nav-tab-btn" onclick="showTab('markers')">📍 Метки игроков</button>
+        <button id="nav-btn-status" class="nav-tab-btn" onclick="showTab('status')">⚡ Статус сервера</button>
       </nav>
       <div class="sidebar-footer">
         <span>Starly Client 1.21.11 Fabric</span>
@@ -232,7 +232,7 @@ const DASHBOARD_HTML = `<!doctype html>
       <section id="page-users" class="page-section active">
         <div class="page-header">
           <h2>👥 Управление пользователями, ролями и банами по HWID</h2>
-          <button id="btn-reload-users-top" class="btn-blue">🔄 Обновить список</button>
+          <button onclick="loadUsers()" class="btn-blue">🔄 Обновить список</button>
         </div>
 
         <div class="card">
@@ -247,7 +247,7 @@ const DASHBOARD_HTML = `<!doctype html>
               <input id="ban-input-reason" placeholder="Например: Чит, декомпиляция, мультиаккаунт">
             </div>
             <div style="align-self: flex-end;">
-              <button id="btn-submit-ban-action" class="btn-danger">Забанить (Аккаунт + HWID)</button>
+              <button onclick="submitBan()" class="btn-danger">Забанить (Аккаунт + HWID)</button>
             </div>
           </div>
         </div>
@@ -278,7 +278,7 @@ const DASHBOARD_HTML = `<!doctype html>
       <section id="page-ota" class="page-section">
         <div class="page-header">
           <h2>🚀 Публикация и управление обновлениями мода (OTA)</h2>
-          <button id="btn-reload-ota" class="btn-blue">🔄 Обновить</button>
+          <button onclick="loadVersionData()" class="btn-blue">🔄 Обновить</button>
         </div>
 
         <div class="card">
@@ -302,7 +302,7 @@ const DASHBOARD_HTML = `<!doctype html>
             </div>
           </div>
           <div style="margin-top: 10px;">
-            <button id="btn-publish-release" class="btn-primary">🚀 Опубликовать релизное обновление</button>
+            <button onclick="publishRelease(false)" class="btn-primary">🚀 Опубликовать релизное обновление</button>
           </div>
         </div>
 
@@ -327,7 +327,7 @@ const DASHBOARD_HTML = `<!doctype html>
             </div>
           </div>
           <div style="margin-top: 10px;">
-            <button id="btn-publish-beta" class="btn-purple">⚡ Опубликовать Beta-обновление</button>
+            <button onclick="publishRelease(true)" class="btn-purple">⚡ Опубликовать Beta-обновление</button>
           </div>
         </div>
       </section>
@@ -336,7 +336,7 @@ const DASHBOARD_HTML = `<!doctype html>
       <section id="page-cosmetics" class="page-section">
         <div class="page-header">
           <h2>✨ Синхронизация 3D-косметики и Figura-аватаров</h2>
-          <button id="btn-reload-cosmetics" class="btn-blue">🔄 Обновить</button>
+          <button onclick="loadCosmetics()" class="btn-blue">🔄 Обновить</button>
         </div>
         <div class="card">
           <p style="margin-bottom: 12px; font-size: 13px; color: #8b949e;">Здесь отображаются активные косметические наборы, отправленные игроками клиента.</p>
@@ -348,7 +348,7 @@ const DASHBOARD_HTML = `<!doctype html>
       <section id="page-markers" class="page-section">
         <div class="page-header">
           <h2>📍 Метки игроков на серверах (Friend Markers)</h2>
-          <button id="btn-reload-markers" class="btn-blue">🔄 Обновить</button>
+          <button onclick="loadMarkers()" class="btn-blue">🔄 Обновить</button>
         </div>
         <div class="card">
           <p style="margin-bottom: 12px; font-size: 13px; color: #8b949e;">Координаты меток, сохранённых игроками.</p>
@@ -386,190 +386,183 @@ const DASHBOARD_HTML = `<!doctype html>
   </div>
 
   <script>
-    // Tab switching via Event Delegation
-    document.addEventListener('click', function(e) {
-      const btn = e.target.closest('.nav-tab-btn');
-      if (!btn) return;
-      
-      const targetId = btn.getAttribute('data-target');
-      if (!targetId) return;
-
-      document.querySelectorAll('.nav-tab-btn').forEach(function(b) { b.classList.remove('active'); });
-      document.querySelectorAll('.page-section').forEach(function(s) { s.classList.remove('active'); });
-
-      btn.classList.add('active');
-      const targetSec = document.getElementById('page-' + targetId);
-      if (targetSec) targetSec.classList.add('active');
-
-      if (targetId === 'users') loadUsers();
-      if (targetId === 'ota') loadVersionData();
-      if (targetId === 'cosmetics') loadCosmetics();
-      if (targetId === 'markers') loadMarkers();
-    });
-
-    async function loadUsers() {
-      const tbody = document.getElementById('users-table-body');
-      const badge = document.getElementById('user-count-badge');
-      if (!tbody) return;
-      try {
-        const res = await fetch('/api/users');
-        const users = await res.json();
-        if (badge) badge.textContent = users.length || 0;
-        renderUsersTable(users);
-      } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #ff8787; padding: 24px;">Ошибка загрузки: ' + e.message + '</td></tr>';
-      }
-    }
-
-    function renderUsersTable(users) {
-      const tbody = document.getElementById('users-table-body');
-      if (!tbody) return;
-      if (!users || users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #8b949e; padding: 24px;">Зарегистрированных пользователей пока нет. Зарегистрируйтесь в лоадере!</td></tr>';
-        return;
+    function showTab(tabName) {
+      var allTabs = ['users', 'ota', 'cosmetics', 'markers', 'status'];
+      for (var i = 0; i < allTabs.length; i++) {
+        var t = allTabs[i];
+        var b = document.getElementById('nav-btn-' + t);
+        var p = document.getElementById('page-' + t);
+        if (b) b.classList.remove('active');
+        if (p) p.classList.remove('active');
       }
 
-      tbody.innerHTML = users.map(function(u) {
-        const hwidShort = u.hwid ? escapeHtml(u.hwid.substring(0, 16)) + '...' : '—';
-        const badgeClass = 'badge-' + (u.role || 'user');
-        const statusBadge = u.banned 
-          ? '<span class="badge badge-banned">ЗАБАНЕН (' + escapeHtml(u.banReason || 'Бан') + ')</span>' 
-          : '<span class="badge badge-active">АКТИВЕН</span>';
+      var activeB = document.getElementById('nav-btn-' + tabName);
+      var activeP = document.getElementById('page-' + tabName);
+      if (activeB) activeB.classList.add('active');
+      if (activeP) activeP.classList.add('active');
 
-        const roleButtons = 
-          '<div class="actions-group">' +
-            (u.role !== 'beta' ? '<button class="btn-purple btn-sm" onclick="setUserRole(\'' + escapeHtml(u.nickname) + '\', \'beta\')">✨ Выдать Beta</button>' : '<button class="btn-blue btn-sm" onclick="setUserRole(\'' + escapeHtml(u.nickname) + '\', \'user\')">Снять Beta</button>') +
-            (u.role !== 'owner' ? '<button class="btn-primary btn-sm" onclick="setUserRole(\'' + escapeHtml(u.nickname) + '\', \'owner\')">👑 Owner</button>' : '') +
-            (u.banned 
-              ? '<button class="btn-primary btn-sm" onclick="unbanUser(\'' + escapeHtml(u.nickname) + '\')">✅ Разбанить</button>' 
-              : '<button class="btn-danger btn-sm" onclick="quickBanUser(\'' + escapeHtml(u.nickname) + '\')">🚫 Бан</button>') +
-          '</div>';
-
-        return '<tr>' +
-          '<td><strong>' + escapeHtml(u.nickname) + '</strong></td>' +
-          '<td>' + escapeHtml(u.email) + '</td>' +
-          '<td><span class="badge ' + badgeClass + '">' + escapeHtml(u.role) + '</span></td>' +
-          '<td class="mono">' + hwidShort + '</td>' +
-          '<td>' + statusBadge + '</td>' +
-          '<td>' + roleButtons + '</td>' +
-          '</tr>';
-      }).join('');
+      if (tabName === 'users') loadUsers();
+      if (tabName === 'ota') loadVersionData();
+      if (tabName === 'cosmetics') loadCosmetics();
+      if (tabName === 'markers') loadMarkers();
     }
 
-    async function setUserRole(nick, role) {
-      const res = await fetch('/api/user/set-role', {
+    function loadUsers() {
+      var tbody = document.getElementById('users-table-body');
+      var badge = document.getElementById('user-count-badge');
+      if (!tbody) return;
+
+      fetch('/api/users')
+        .then(function(res) { return res.json(); })
+        .then(function(users) {
+          if (badge) badge.textContent = users.length || 0;
+          if (!users || users.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #8b949e; padding: 24px;">Зарегистрированных пользователей пока нет. Зарегистрируйтесь в лоадере!</td></tr>';
+            return;
+          }
+
+          var html = '';
+          for (var i = 0; i < users.length; i++) {
+            var u = users[i];
+            var hwidShort = u.hwid ? escapeHtml(u.hwid.substring(0, 16)) + '...' : '—';
+            var badgeClass = 'badge-' + (u.role || 'user');
+            var statusBadge = u.banned 
+              ? '<span class="badge badge-banned">ЗАБАНЕН (' + escapeHtml(u.banReason || 'Бан') + ')</span>' 
+              : '<span class="badge badge-active">АКТИВЕН</span>';
+
+            var roleButtons = '<div class="actions-group">';
+            if (u.role !== 'beta') {
+              roleButtons += '<button class="btn-purple btn-sm" onclick="setRole(\'' + escapeHtml(u.nickname) + '\', \'beta\')">✨ Выдать Beta</button>';
+            } else {
+              roleButtons += '<button class="btn-blue btn-sm" onclick="setRole(\'' + escapeHtml(u.nickname) + '\', \'user\')">Снять Beta</button>';
+            }
+            if (u.role !== 'owner') {
+              roleButtons += '<button class="btn-primary btn-sm" onclick="setRole(\'' + escapeHtml(u.nickname) + '\', \'owner\')">👑 Owner</button>';
+            }
+            if (u.banned) {
+              roleButtons += '<button class="btn-primary btn-sm" onclick="unban(\'' + escapeHtml(u.nickname) + '\')">✅ Разбанить</button>';
+            } else {
+              roleButtons += '<button class="btn-danger btn-sm" onclick="quickBan(\'' + escapeHtml(u.nickname) + '\')">🚫 Бан</button>';
+            }
+            roleButtons += '</div>';
+
+            html += '<tr>' +
+              '<td><strong>' + escapeHtml(u.nickname) + '</strong></td>' +
+              '<td>' + escapeHtml(u.email) + '</td>' +
+              '<td><span class="badge ' + badgeClass + '">' + escapeHtml(u.role) + '</span></td>' +
+              '<td class="mono">' + hwidShort + '</td>' +
+              '<td>' + statusBadge + '</td>' +
+              '<td>' + roleButtons + '</td>' +
+              '</tr>';
+          }
+          tbody.innerHTML = html;
+        })
+        .catch(function(err) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #ff8787; padding: 24px;">Ошибка загрузки: ' + err.message + '</td></tr>';
+        });
+    }
+
+    function setRole(nick, role) {
+      fetch('/api/user/set-role', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nickname: nick, role: role })
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.success) {
+          loadUsers();
+        } else {
+          alert('Ошибка: ' + (data.error || 'Не удалось сменить роль'));
+        }
       });
-      const data = await res.json();
-      if (data.success) {
-        loadUsers();
-      } else {
-        alert('Ошибка изменения роли: ' + (data.error || 'Неизвестная ошибка'));
-      }
     }
 
-    async function unbanUser(nick) {
-      await fetch('/api/user/unban', {
+    function unban(nick) {
+      fetch('/api/user/unban', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nickname: nick })
-      });
-      loadUsers();
+      }).then(function() { loadUsers(); });
     }
 
-    async function quickBanUser(nick) {
-      const reason = prompt('Причина бана для игрока ' + nick + ':', 'Нарушение правил / Чит');
+    function quickBan(nick) {
+      var reason = prompt('Причина бана для игрока ' + nick + ':', 'Нарушение правил');
       if (reason) {
-        await fetch('/api/user/ban', {
+        fetch('/api/user/ban', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ nickname: nick, reason: reason })
-        });
-        loadUsers();
+        }).then(function() { loadUsers(); });
       }
     }
 
-    document.getElementById('btn-submit-ban-action')?.addEventListener('click', async function() {
-      const nickInput = document.getElementById('ban-input-nick');
-      const reasonInput = document.getElementById('ban-input-reason');
-      const nick = nickInput ? nickInput.value.trim() : '';
-      const reason = (reasonInput ? reasonInput.value.trim() : '') || 'Заблокирован администратором';
+    function submitBan() {
+      var nickInput = document.getElementById('ban-input-nick');
+      var reasonInput = document.getElementById('ban-input-reason');
+      var nick = nickInput ? nickInput.value.trim() : '';
+      var reason = (reasonInput ? reasonInput.value.trim() : '') || 'Заблокирован администратором';
 
       if (!nick) return alert('Введите никнейм или почту');
 
-      const res = await fetch('/api/user/ban', {
+      fetch('/api/user/ban', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nickname: nick, reason: reason })
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.success) {
+          alert(data.message);
+          if (nickInput) nickInput.value = '';
+          if (reasonInput) reasonInput.value = '';
+          loadUsers();
+        } else {
+          alert('Ошибка: ' + (data.error || 'Не удалось забанить'));
+        }
       });
-      const data = await res.json();
-      if (data.success) {
-        alert(data.message);
-        if (nickInput) nickInput.value = '';
-        if (reasonInput) reasonInput.value = '';
-        loadUsers();
-      } else {
-        alert('Ошибка: ' + (data.error || 'Не удалось забанить'));
-      }
-    });
-
-    document.getElementById('btn-reload-users-top')?.addEventListener('click', loadUsers);
-    document.getElementById('btn-reload-ota')?.addEventListener('click', loadVersionData);
-    document.getElementById('btn-reload-cosmetics')?.addEventListener('click', loadCosmetics);
-    document.getElementById('btn-reload-markers')?.addEventListener('click', loadMarkers);
-
-    document.getElementById('btn-publish-release')?.addEventListener('click', function() {
-      publishReleaseUpdate(false);
-    });
-
-    document.getElementById('btn-publish-beta')?.addEventListener('click', function() {
-      publishReleaseUpdate(true);
-    });
-
-    async function loadVersionData() {
-      try {
-        const res = await fetch('/api/loader/version');
-        const v = await res.json();
-        const rVer = document.getElementById('ota-release-version');
-        const rLog = document.getElementById('ota-release-changelog');
-        const bVer = document.getElementById('ota-beta-version');
-        const bLog = document.getElementById('ota-beta-changelog');
-        const statV = document.getElementById('stat-version');
-        const statBV = document.getElementById('stat-beta-version');
-
-        if (rVer) rVer.value = v.version || '';
-        if (rLog) rLog.value = v.changelog || '';
-        if (bVer) bVer.value = v.betaVersion || '';
-        if (bLog) bLog.value = v.betaChangelog || '';
-        if (statV) statV.textContent = v.version || '1.21.11';
-        if (statBV) statBV.textContent = v.betaVersion || '1.21.11-beta';
-      } catch (e) {}
     }
 
-    async function publishReleaseUpdate(isBeta) {
-      const verInput = document.getElementById(isBeta ? 'ota-beta-version' : 'ota-release-version');
-      const logInput = document.getElementById(isBeta ? 'ota-beta-changelog' : 'ota-release-changelog');
-      const fileInput = document.getElementById(isBeta ? 'ota-beta-file' : 'ota-release-file');
+    function loadVersionData() {
+      fetch('/api/loader/version')
+        .then(function(res) { return res.json(); })
+        .then(function(v) {
+          var rVer = document.getElementById('ota-release-version');
+          var rLog = document.getElementById('ota-release-changelog');
+          var bVer = document.getElementById('ota-beta-version');
+          var bLog = document.getElementById('ota-beta-changelog');
+          var statV = document.getElementById('stat-version');
+          var statBV = document.getElementById('stat-beta-version');
 
-      const version = verInput ? verInput.value.trim() : '';
-      const changelog = logInput ? logInput.value.trim() : '';
+          if (rVer) rVer.value = v.version || '';
+          if (rLog) rLog.value = v.changelog || '';
+          if (bVer) bVer.value = v.betaVersion || '';
+          if (bLog) bLog.value = v.betaChangelog || '';
+          if (statV) statV.textContent = v.version || '1.21.11';
+          if (statBV) statBV.textContent = v.betaVersion || '1.21.11-beta';
+        });
+    }
+
+    async function publishRelease(isBeta) {
+      var verInput = document.getElementById(isBeta ? 'ota-beta-version' : 'ota-release-version');
+      var logInput = document.getElementById(isBeta ? 'ota-beta-changelog' : 'ota-release-changelog');
+      var fileInput = document.getElementById(isBeta ? 'ota-beta-file' : 'ota-release-file');
+
+      var version = verInput ? verInput.value.trim() : '';
+      var changelog = logInput ? logInput.value.trim() : '';
 
       if (!version) return alert('Укажите версию');
 
-      // 1. Update version & changelog
       await fetch('/api/loader/set-version', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ version: version, changelog: changelog, isBeta: isBeta })
       });
 
-      // 2. Upload JAR if selected
       if (fileInput && fileInput.files.length > 0) {
-        const file = fileInput.files[0];
-        const buffer = await file.arrayBuffer();
-        const uploadEndpoint = isBeta ? '/api/loader/upload-beta' : '/api/loader/upload';
+        var file = fileInput.files[0];
+        var buffer = await file.arrayBuffer();
+        var uploadEndpoint = isBeta ? '/api/loader/upload-beta' : '/api/loader/upload';
         
         await fetch(uploadEndpoint, {
           method: 'POST',
@@ -584,28 +577,22 @@ const DASHBOARD_HTML = `<!doctype html>
       loadVersionData();
     }
 
-    async function loadCosmetics() {
-      const box = document.getElementById('cosmetics-json');
+    function loadCosmetics() {
+      var box = document.getElementById('cosmetics-json');
       if (!box) return;
-      try {
-        const res = await fetch('/api/cosmetics/all');
-        const data = await res.json();
-        box.textContent = JSON.stringify(data, null, 2);
-      } catch (e) {
-        box.textContent = 'Ошибка загрузки: ' + e.message;
-      }
+      fetch('/api/cosmetics/all')
+        .then(function(res) { return res.json(); })
+        .then(function(data) { box.textContent = JSON.stringify(data, null, 2); })
+        .catch(function(e) { box.textContent = 'Ошибка загрузки: ' + e.message; });
     }
 
-    async function loadMarkers() {
-      const box = document.getElementById('markers-json');
+    function loadMarkers() {
+      var box = document.getElementById('markers-json');
       if (!box) return;
-      try {
-        const res = await fetch('/api/markers');
-        const data = await res.json();
-        box.textContent = JSON.stringify(data, null, 2);
-      } catch (e) {
-        box.textContent = 'Ошибка загрузки: ' + e.message;
-      }
+      fetch('/api/markers')
+        .then(function(res) { return res.json(); })
+        .then(function(data) { box.textContent = JSON.stringify(data, null, 2); })
+        .catch(function(e) { box.textContent = 'Ошибка загрузки: ' + e.message; });
     }
 
     function escapeHtml(str) {
@@ -614,14 +601,15 @@ const DASHBOARD_HTML = `<!doctype html>
       });
     }
 
-    // Auto-load on open
-    loadUsers();
-    loadVersionData();
+    window.onload = function() {
+      loadUsers();
+      loadVersionData();
+    };
   </script>
 </body>
 </html>`;
 
-// Serve Web Dashboard on GET / with no-cache headers
+// Serve Web Dashboard on GET / with strict no-cache headers
 app.get('/', (req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -999,5 +987,5 @@ app.post('/api/markers', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[StarlyServer] Running on port ${PORT} with No-Cache & Event Delegation UI`);
+  console.log(`[StarlyServer] Running on port ${PORT} with Instant Vanilla JS showTab()`);
 });
