@@ -216,11 +216,11 @@ const DASHBOARD_HTML = `<!doctype html>
         </div>
       </div>
       <nav class="nav-menu">
-        <button id="nav-btn-users" class="nav-tab-btn active" onclick="switchPage('users')">👥 Пользователи и Бан-лист</button>
-        <button id="nav-btn-ota" class="nav-tab-btn" onclick="switchPage('ota')">🚀 Выпуск обновлений (OTA)</button>
-        <button id="nav-btn-cosmetics" class="nav-tab-btn" onclick="switchPage('cosmetics')">✨ Косметика и Аватары</button>
-        <button id="nav-btn-markers" class="nav-tab-btn" onclick="switchPage('markers')">📍 Метки игроков</button>
-        <button id="nav-btn-status" class="nav-tab-btn" onclick="switchPage('status')">⚡ Статус сервера</button>
+        <button id="nav-btn-users" class="nav-tab-btn active" data-target="users">👥 Пользователи и Бан-лист</button>
+        <button id="nav-btn-ota" class="nav-tab-btn" data-target="ota">🚀 Выпуск обновлений (OTA)</button>
+        <button id="nav-btn-cosmetics" class="nav-tab-btn" data-target="cosmetics">✨ Косметика и Аватары</button>
+        <button id="nav-btn-markers" class="nav-tab-btn" data-target="markers">📍 Метки игроков</button>
+        <button id="nav-btn-status" class="nav-tab-btn" data-target="status">⚡ Статус сервера</button>
       </nav>
       <div class="sidebar-footer">
         <span>Starly Client 1.21.11 Fabric</span>
@@ -232,7 +232,7 @@ const DASHBOARD_HTML = `<!doctype html>
       <section id="page-users" class="page-section active">
         <div class="page-header">
           <h2>👥 Управление пользователями, ролями и банами по HWID</h2>
-          <button onclick="loadUsers()" class="btn-blue">🔄 Обновить список</button>
+          <button id="btn-reload-users-top" class="btn-blue">🔄 Обновить список</button>
         </div>
 
         <div class="card">
@@ -247,7 +247,7 @@ const DASHBOARD_HTML = `<!doctype html>
               <input id="ban-input-reason" placeholder="Например: Чит, декомпиляция, мультиаккаунт">
             </div>
             <div style="align-self: flex-end;">
-              <button onclick="handleBanSubmit()" class="btn-danger">Забанить (Аккаунт + HWID)</button>
+              <button id="btn-submit-ban-action" class="btn-danger">Забанить (Аккаунт + HWID)</button>
             </div>
           </div>
         </div>
@@ -278,7 +278,7 @@ const DASHBOARD_HTML = `<!doctype html>
       <section id="page-ota" class="page-section">
         <div class="page-header">
           <h2>🚀 Публикация и управление обновлениями мода (OTA)</h2>
-          <button onclick="loadVersionData()" class="btn-blue">🔄 Обновить</button>
+          <button id="btn-reload-ota" class="btn-blue">🔄 Обновить</button>
         </div>
 
         <div class="card">
@@ -302,7 +302,7 @@ const DASHBOARD_HTML = `<!doctype html>
             </div>
           </div>
           <div style="margin-top: 10px;">
-            <button onclick="publishReleaseUpdate(false)" class="btn-primary">🚀 Опубликовать релизное обновление</button>
+            <button id="btn-publish-release" class="btn-primary">🚀 Опубликовать релизное обновление</button>
           </div>
         </div>
 
@@ -327,7 +327,7 @@ const DASHBOARD_HTML = `<!doctype html>
             </div>
           </div>
           <div style="margin-top: 10px;">
-            <button onclick="publishReleaseUpdate(true)" class="btn-purple">⚡ Опубликовать Beta-обновление</button>
+            <button id="btn-publish-beta" class="btn-purple">⚡ Опубликовать Beta-обновление</button>
           </div>
         </div>
       </section>
@@ -336,7 +336,7 @@ const DASHBOARD_HTML = `<!doctype html>
       <section id="page-cosmetics" class="page-section">
         <div class="page-header">
           <h2>✨ Синхронизация 3D-косметики и Figura-аватаров</h2>
-          <button onclick="loadCosmetics()" class="btn-blue">🔄 Обновить</button>
+          <button id="btn-reload-cosmetics" class="btn-blue">🔄 Обновить</button>
         </div>
         <div class="card">
           <p style="margin-bottom: 12px; font-size: 13px; color: #8b949e;">Здесь отображаются активные косметические наборы, отправленные игроками клиента.</p>
@@ -348,7 +348,7 @@ const DASHBOARD_HTML = `<!doctype html>
       <section id="page-markers" class="page-section">
         <div class="page-header">
           <h2>📍 Метки игроков на серверах (Friend Markers)</h2>
-          <button onclick="loadMarkers()" class="btn-blue">🔄 Обновить</button>
+          <button id="btn-reload-markers" class="btn-blue">🔄 Обновить</button>
         </div>
         <div class="card">
           <p style="margin-bottom: 12px; font-size: 13px; color: #8b949e;">Координаты меток, сохранённых игроками.</p>
@@ -386,21 +386,26 @@ const DASHBOARD_HTML = `<!doctype html>
   </div>
 
   <script>
-    function switchPage(pageId) {
-      document.querySelectorAll('.nav-tab-btn').forEach(btn => btn.classList.remove('active'));
-      document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
+    // Tab switching via Event Delegation
+    document.addEventListener('click', function(e) {
+      const btn = e.target.closest('.nav-tab-btn');
+      if (!btn) return;
+      
+      const targetId = btn.getAttribute('data-target');
+      if (!targetId) return;
 
-      const activeBtn = document.getElementById('nav-btn-' + pageId);
-      const activeSection = document.getElementById('page-' + pageId);
+      document.querySelectorAll('.nav-tab-btn').forEach(function(b) { b.classList.remove('active'); });
+      document.querySelectorAll('.page-section').forEach(function(s) { s.classList.remove('active'); });
 
-      if (activeBtn) activeBtn.classList.add('active');
-      if (activeSection) activeSection.classList.add('active');
+      btn.classList.add('active');
+      const targetSec = document.getElementById('page-' + targetId);
+      if (targetSec) targetSec.classList.add('active');
 
-      if (pageId === 'users') loadUsers();
-      if (pageId === 'ota') loadVersionData();
-      if (pageId === 'cosmetics') loadCosmetics();
-      if (pageId === 'markers') loadMarkers();
-    }
+      if (targetId === 'users') loadUsers();
+      if (targetId === 'ota') loadVersionData();
+      if (targetId === 'cosmetics') loadCosmetics();
+      if (targetId === 'markers') loadMarkers();
+    });
 
     async function loadUsers() {
       const tbody = document.getElementById('users-table-body');
@@ -420,11 +425,11 @@ const DASHBOARD_HTML = `<!doctype html>
       const tbody = document.getElementById('users-table-body');
       if (!tbody) return;
       if (!users || users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #8b949e; padding: 24px;">Зарегистрированных пользователей пока нет.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #8b949e; padding: 24px;">Зарегистрированных пользователей пока нет. Зарегистрируйтесь в лоадере!</td></tr>';
         return;
       }
 
-      tbody.innerHTML = users.map(u => {
+      tbody.innerHTML = users.map(function(u) {
         const hwidShort = u.hwid ? escapeHtml(u.hwid.substring(0, 16)) + '...' : '—';
         const badgeClass = 'badge-' + (u.role || 'user');
         const statusBadge = u.banned 
@@ -486,7 +491,7 @@ const DASHBOARD_HTML = `<!doctype html>
       }
     }
 
-    async function handleBanSubmit() {
+    document.getElementById('btn-submit-ban-action')?.addEventListener('click', async function() {
       const nickInput = document.getElementById('ban-input-nick');
       const reasonInput = document.getElementById('ban-input-reason');
       const nick = nickInput ? nickInput.value.trim() : '';
@@ -508,7 +513,20 @@ const DASHBOARD_HTML = `<!doctype html>
       } else {
         alert('Ошибка: ' + (data.error || 'Не удалось забанить'));
       }
-    }
+    });
+
+    document.getElementById('btn-reload-users-top')?.addEventListener('click', loadUsers);
+    document.getElementById('btn-reload-ota')?.addEventListener('click', loadVersionData);
+    document.getElementById('btn-reload-cosmetics')?.addEventListener('click', loadCosmetics);
+    document.getElementById('btn-reload-markers')?.addEventListener('click', loadMarkers);
+
+    document.getElementById('btn-publish-release')?.addEventListener('click', function() {
+      publishReleaseUpdate(false);
+    });
+
+    document.getElementById('btn-publish-beta')?.addEventListener('click', function() {
+      publishReleaseUpdate(true);
+    });
 
     async function loadVersionData() {
       try {
@@ -544,7 +562,7 @@ const DASHBOARD_HTML = `<!doctype html>
       await fetch('/api/loader/set-version', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ version, changelog, isBeta })
+        body: JSON.stringify({ version: version, changelog: changelog, isBeta: isBeta })
       });
 
       // 2. Upload JAR if selected
@@ -591,21 +609,24 @@ const DASHBOARD_HTML = `<!doctype html>
     }
 
     function escapeHtml(str) {
-      return (str || '').replace(/[&<>"']/g, m => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
-      })[m]);
+      return (str || '').replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+      });
     }
 
-    window.onload = function() {
-      loadUsers();
-    };
+    // Auto-load on open
+    loadUsers();
+    loadVersionData();
   </script>
 </body>
 </html>`;
 
-// Serve Web Dashboard on GET /
+// Serve Web Dashboard on GET / with no-cache headers
 app.get('/', (req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   res.send(DASHBOARD_HTML);
 });
 
@@ -978,5 +999,5 @@ app.post('/api/markers', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[StarlyServer] Running on port ${PORT} with Full Admin Panel & OTA Releases`);
+  console.log(`[StarlyServer] Running on port ${PORT} with No-Cache & Event Delegation UI`);
 });
