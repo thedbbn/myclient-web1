@@ -144,19 +144,19 @@ const DASHBOARD_HTML = `<!doctype html>
     .brand h1 { font-family: 'Outfit', sans-serif; font-size: 20px; color: #fff; }
     .brand .sub { color: #58a6ff; font-size: 14px; }
     .nav-menu { display: flex; flex-direction: column; gap: 6px; flex: 1; }
-    .tab { background: transparent; border: none; color: #8b949e; padding: 10px 14px; text-align: left; border-radius: 8px; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: all 0.15s ease; }
-    .tab:hover { background: rgba(255, 255, 255, 0.05); color: #c9d1d9; }
-    .tab.active { background: rgba(88, 166, 255, 0.15); color: #58a6ff; border: 1px solid rgba(88, 166, 255, 0.3); }
+    .nav-tab-btn { background: transparent; border: none; color: #8b949e; padding: 10px 14px; text-align: left; border-radius: 8px; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: all 0.15s ease; }
+    .nav-tab-btn:hover { background: rgba(255, 255, 255, 0.05); color: #c9d1d9; }
+    .nav-tab-btn.active { background: rgba(88, 166, 255, 0.15) !important; color: #58a6ff !important; border: 1px solid rgba(88, 166, 255, 0.3) !important; }
     .sidebar-footer { font-size: 11px; color: #484f58; text-align: center; }
     .content { flex: 1; padding: 32px 40px; overflow-y: auto; }
-    .page { display: none; }
-    .page.active { display: block; }
+    .page-section { display: none !important; }
+    .page-section.active { display: block !important; }
     .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
     .page-header h2 { font-family: 'Outfit', sans-serif; font-size: 22px; }
     .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
     .card h3 { font-size: 15px; margin-bottom: 14px; color: #c9d1d9; }
-    .row { display: flex; gap: 10px; }
-    input { flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 9px 14px; color: #fff; font-size: 13px; outline: none; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; }
+    input { flex: 1; min-width: 200px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 9px 14px; color: #fff; font-size: 13px; outline: none; }
     input:focus { border-color: #58a6ff; }
     button { padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s ease; }
     .btn-primary { background: #238636; color: #fff; }
@@ -178,7 +178,7 @@ const DASHBOARD_HTML = `<!doctype html>
     .text-muted { color: #8b949e; }
     .text-success { color: #3fb950; }
     .text-info { color: #58a6ff; }
-    .code-box { background: #0d1117; border: 1px solid #30363d; padding: 14px; border-radius: 8px; font-family: monospace; font-size: 12px; overflow-x: auto; max-height: 400px; }
+    .code-box { background: #0d1117; border: 1px solid #30363d; padding: 14px; border-radius: 8px; font-family: monospace; font-size: 12px; overflow-x: auto; max-height: 400px; white-space: pre-wrap; }
     .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
     .stat-card { background: #0d1117; border: 1px solid #30363d; padding: 16px; border-radius: 8px; display: flex; flex-direction: column; gap: 6px; }
     .stat-title { font-size: 12px; color: #8b949e; }
@@ -193,10 +193,10 @@ const DASHBOARD_HTML = `<!doctype html>
         <h1>Starly <span class="sub">Server</span></h1>
       </div>
       <nav class="nav-menu">
-        <button class="tab active" data-tab="users">👥 Пользователи и Бан-лист</button>
-        <button class="tab" data-tab="cosmetics">✨ Косметика</button>
-        <button class="tab" data-tab="markers">📍 Метки игроков</button>
-        <button class="tab" data-tab="status">⚡ Статус сервера</button>
+        <button id="nav-btn-users" class="nav-tab-btn active" onclick="switchPage('users')">👥 Пользователи и Бан-лист</button>
+        <button id="nav-btn-cosmetics" class="nav-tab-btn" onclick="switchPage('cosmetics')">✨ Косметика</button>
+        <button id="nav-btn-markers" class="nav-tab-btn" onclick="switchPage('markers')">📍 Метки игроков</button>
+        <button id="nav-btn-status" class="nav-tab-btn" onclick="switchPage('status')">⚡ Статус сервера</button>
       </nav>
       <div class="sidebar-footer">
         <span>Starly Client 1.21.11</span>
@@ -205,10 +205,10 @@ const DASHBOARD_HTML = `<!doctype html>
 
     <main class="content">
       <!-- TAB 1: USERS & BANS -->
-      <section id="users" class="page active">
+      <section id="page-users" class="page-section active">
         <div class="page-header">
           <h2>Управление аккаунтами и банами по HWID</h2>
-          <button id="btn-refresh-users" class="btn-primary">Обновить список</button>
+          <button onclick="loadUsers()" class="btn-primary">Обновить список</button>
         </div>
 
         <div class="card">
@@ -216,7 +216,7 @@ const DASHBOARD_HTML = `<!doctype html>
           <div class="row">
             <input id="ban-input-nick" placeholder="Никнейм или Email">
             <input id="ban-input-reason" placeholder="Причина блокировки (чит, мультиакк и т.д.)">
-            <button id="btn-ban-user" class="btn-danger">Забанить (Аккаунт + HWID)</button>
+            <button onclick="handleBanSubmit()" class="btn-danger">Забанить (Аккаунт + HWID)</button>
           </div>
         </div>
 
@@ -243,29 +243,31 @@ const DASHBOARD_HTML = `<!doctype html>
       </section>
 
       <!-- TAB 2: COSMETICS -->
-      <section id="cosmetics" class="page">
+      <section id="page-cosmetics" class="page-section">
         <div class="page-header">
           <h2>Синхронизация косметики игроков</h2>
+          <button onclick="loadCosmetics()" class="btn-primary">Обновить</button>
         </div>
         <div class="card">
-          <p>Активная косметика синхронизируется между всеми игроками клиента автоматически.</p>
+          <p style="margin-bottom: 12px; font-size: 13px; color: #8b949e;">Активная косметика синхронизируется между всеми игроками клиента автоматически.</p>
           <pre id="cosmetics-json" class="code-box">Загрузка...</pre>
         </div>
       </section>
 
       <!-- TAB 3: MARKERS -->
-      <section id="markers" class="page">
+      <section id="page-markers" class="page-section">
         <div class="page-header">
           <h2>Метки игроков (Web Markers)</h2>
+          <button onclick="loadMarkers()" class="btn-primary">Обновить</button>
         </div>
         <div class="card">
-          <p>Метки на карте друзей.</p>
+          <p style="margin-bottom: 12px; font-size: 13px; color: #8b949e;">Метки на карте друзей.</p>
           <pre id="markers-json" class="code-box">Загрузка...</pre>
         </div>
       </section>
 
       <!-- TAB 4: STATUS -->
-      <section id="status" class="page">
+      <section id="page-status" class="page-section">
         <div class="page-header">
           <h2>Статус API сервера</h2>
         </div>
@@ -290,130 +292,141 @@ const DASHBOARD_HTML = `<!doctype html>
   </div>
 
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const tabs = document.querySelectorAll('.tab');
-      const pages = document.querySelectorAll('.page');
+    function switchPage(pageId) {
+      document.querySelectorAll('.nav-tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
 
-      tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-          tabs.forEach(t => t.classList.remove('active'));
-          pages.forEach(p => p.classList.remove('active'));
-          tab.classList.add('active');
-          const target = document.getElementById(tab.dataset.tab);
-          if (target) target.classList.add('active');
-        });
+      const activeBtn = document.getElementById('nav-btn-' + pageId);
+      const activeSection = document.getElementById('page-' + pageId);
+
+      if (activeBtn) activeBtn.classList.add('active');
+      if (activeSection) activeSection.classList.add('active');
+
+      if (pageId === 'users') loadUsers();
+      if (pageId === 'cosmetics') loadCosmetics();
+      if (pageId === 'markers') loadMarkers();
+    }
+
+    async function loadUsers() {
+      const tbody = document.getElementById('users-table-body');
+      if (!tbody) return;
+      try {
+        const res = await fetch('/api/users');
+        const users = await res.json();
+        renderUsersTable(users);
+      } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Ошибка загрузки: ' + e.message + '</td></tr>';
+      }
+    }
+
+    function renderUsersTable(users) {
+      const tbody = document.getElementById('users-table-body');
+      if (!tbody) return;
+      if (!users || users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Пользователи еще не зарегистрированы.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = users.map(u => {
+        const hwidShort = u.hwid ? escapeHtml(u.hwid.substring(0, 16)) + '...' : '—';
+        const badgeClass = 'badge-' + (u.role || 'user');
+        const statusBadge = u.banned 
+          ? '<span class="badge badge-banned">ЗАБАНЕН (' + escapeHtml(u.banReason || 'Бан') + ')</span>' 
+          : '<span class="badge badge-active">АКТИВЕН</span>';
+        
+        const actionBtn = u.banned 
+          ? '<button class="btn-primary btn-sm" onclick="unbanUser(\'' + escapeHtml(u.nickname) + '\')">Разбанить</button>'
+          : '<button class="btn-danger btn-sm" onclick="quickBanUser(\'' + escapeHtml(u.nickname) + '\')">Бан</button>';
+
+        return '<tr>' +
+          '<td><strong>' + escapeHtml(u.nickname) + '</strong></td>' +
+          '<td>' + escapeHtml(u.email) + '</td>' +
+          '<td><span class="badge ' + badgeClass + '">' + escapeHtml(u.role) + '</span></td>' +
+          '<td class="mono">' + hwidShort + '</td>' +
+          '<td>' + statusBadge + '</td>' +
+          '<td>' + actionBtn + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    async function unbanUser(nick) {
+      await fetch('/api/user/unban', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname: nick })
       });
+      loadUsers();
+    }
 
-      const usersTableBody = document.getElementById('users-table-body');
-      const btnRefreshUsers = document.getElementById('btn-refresh-users');
-      const banInputNick = document.getElementById('ban-input-nick');
-      const banInputReason = document.getElementById('ban-input-reason');
-      const btnBanUser = document.getElementById('btn-ban-user');
-      const cosmeticsJson = document.getElementById('cosmetics-json');
-      const markersJson = document.getElementById('markers-json');
-
-      async function loadUsers() {
-        try {
-          const res = await fetch('/api/users');
-          const users = await res.json();
-          renderUsersTable(users);
-        } catch (e) {
-          usersTableBody.innerHTML = '<tr><td colspan="6" class="text-muted">Ошибка загрузки: ' + e.message + '</td></tr>';
-        }
-      }
-
-      function renderUsersTable(users) {
-        if (!users || users.length === 0) {
-          usersTableBody.innerHTML = '<tr><td colspan="6" class="text-muted">Пользователи еще не зарегистрированы.</td></tr>';
-          return;
-        }
-
-        usersTableBody.innerHTML = users.map(u => {
-          const hwidShort = u.hwid ? escapeHtml(u.hwid.substring(0, 16)) + '...' : '—';
-          const badgeClass = 'badge-' + (u.role || 'user');
-          const statusBadge = u.banned ? '<span class="badge badge-banned">ЗАБАНЕН (' + escapeHtml(u.banReason || 'Бан') + ')</span>' : '<span class="badge badge-active">АКТИВЕН</span>';
-          const actionBtn = u.banned 
-            ? '<button class="btn-primary btn-sm" onclick="unbanUser(\'' + escapeHtml(u.nickname) + '\')">Разбанить</button>'
-            : '<button class="btn-danger btn-sm" onclick="quickBanUser(\'' + escapeHtml(u.nickname) + '\')">Бан</button>';
-
-          return '<tr>' +
-            '<td><strong>' + escapeHtml(u.nickname) + '</strong></td>' +
-            '<td>' + escapeHtml(u.email) + '</td>' +
-            '<td><span class="badge ' + badgeClass + '">' + escapeHtml(u.role) + '</span></td>' +
-            '<td class="mono">' + hwidShort + '</td>' +
-            '<td>' + statusBadge + '</td>' +
-            '<td>' + actionBtn + '</td>' +
-            '</tr>';
-        }).join('');
-      }
-
-      window.unbanUser = async function(nick) {
-        await fetch('/api/user/unban', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nickname: nick })
-        });
-        loadUsers();
-      };
-
-      window.quickBanUser = async function(nick) {
-        const reason = prompt('Причина бана для игрока ' + nick + ':', 'Нарушение правил');
-        if (reason) {
-          await fetch('/api/user/ban', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nickname: nick, reason: reason })
-          });
-          loadUsers();
-        }
-      };
-
-      btnBanUser?.addEventListener('click', async () => {
-        const nick = banInputNick.value.trim();
-        const reason = banInputReason.value.trim() || 'Заблокирован администратором';
-        if (!nick) return alert('Введите никнейм или почту');
-
-        const res = await fetch('/api/user/ban', {
+    async function quickBanUser(nick) {
+      const reason = prompt('Причина бана для игрока ' + nick + ':', 'Нарушение правил');
+      if (reason) {
+        await fetch('/api/user/ban', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ nickname: nick, reason: reason })
         });
-        const data = await res.json();
-        if (data.success) {
-          alert(data.message);
-          banInputNick.value = '';
-          banInputReason.value = '';
-          loadUsers();
-        } else {
-          alert('Ошибка: ' + (data.error || 'Не удалось забанить'));
-        }
+        loadUsers();
+      }
+    }
+
+    async function handleBanSubmit() {
+      const nickInput = document.getElementById('ban-input-nick');
+      const reasonInput = document.getElementById('ban-input-reason');
+      const nick = nickInput ? nickInput.value.trim() : '';
+      const reason = (reasonInput ? reasonInput.value.trim() : '') || 'Заблокирован администратором';
+
+      if (!nick) return alert('Введите никнейм или почту');
+
+      const res = await fetch('/api/user/ban', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname: nick, reason: reason })
       });
-
-      btnRefreshUsers?.addEventListener('click', loadUsers);
-
-      async function loadExtras() {
-        try {
-          const cosRes = await fetch('/api/cosmetics/all');
-          const cosData = await cosRes.json();
-          if (cosmeticsJson) cosmeticsJson.textContent = JSON.stringify(cosData, null, 2);
-        } catch (e) {}
-
-        try {
-          const markRes = await fetch('/api/markers');
-          const markData = await markRes.json();
-          if (markersJson) markersJson.textContent = JSON.stringify(markData, null, 2);
-        } catch (e) {}
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        if (nickInput) nickInput.value = '';
+        if (reasonInput) reasonInput.value = '';
+        loadUsers();
+      } else {
+        alert('Ошибка: ' + (data.error || 'Не удалось забанить'));
       }
+    }
 
-      function escapeHtml(str) {
-        return (str || '').replace(/[&<>"']/g, m => ({
-          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
-        })[m]);
+    async function loadCosmetics() {
+      const box = document.getElementById('cosmetics-json');
+      if (!box) return;
+      try {
+        const res = await fetch('/api/cosmetics/all');
+        const data = await res.json();
+        box.textContent = JSON.stringify(data, null, 2);
+      } catch (e) {
+        box.textContent = 'Ошибка загрузки: ' + e.message;
       }
+    }
 
+    async function loadMarkers() {
+      const box = document.getElementById('markers-json');
+      if (!box) return;
+      try {
+        const res = await fetch('/api/markers');
+        const data = await res.json();
+        box.textContent = JSON.stringify(data, null, 2);
+      } catch (e) {
+        box.textContent = 'Ошибка загрузки: ' + e.message;
+      }
+    }
+
+    function escapeHtml(str) {
+      return (str || '').replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+      })[m]);
+    }
+
+    window.onload = function() {
       loadUsers();
-      loadExtras();
-    });
+    };
   </script>
 </body>
 </html>`;
@@ -760,5 +773,5 @@ app.get('/api/loader/download-beta', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[StarlyServer] Running on port ${PORT} with All-In-One Web Dashboard, Email Auth & HWID Protection`);
+  console.log(`[StarlyServer] Running on port ${PORT} with Instant Tab Switching, Email Auth & HWID Protection`);
 });
