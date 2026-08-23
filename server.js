@@ -7,16 +7,17 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const PASSWORD_SALT = 'STARLY_AUTH_SALT_v1_2026';
 
-// Built-in CORS
+// Permissive CORS and Security Headers
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-version, x-changelog, x-channel, x-hwid');
+  res.header('Content-Security-Policy', "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;");
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
 
-// JSON and URL-encoded body parsers
+// Parsers
 app.use(express.json({ limit: '150mb' }));
 app.use(express.urlencoded({ extended: true, limit: '150mb' }));
 app.use(express.raw({ type: 'application/octet-stream', limit: '150mb' }));
@@ -34,7 +35,7 @@ if (!fs.existsSync(STORAGE_DIR)) {
   fs.mkdirSync(STORAGE_DIR, { recursive: true });
 }
 
-// 1. Cosmetics & Player Data
+// 1. Cosmetics
 let cosmeticsData = {};
 if (fs.existsSync(DATA_FILE)) {
   try { cosmeticsData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); } catch (e) { cosmeticsData = {}; }
@@ -43,7 +44,7 @@ function saveCosmeticsData() {
   try { fs.writeFileSync(DATA_FILE, JSON.stringify(cosmeticsData, null, 2), 'utf8'); } catch (e) {}
 }
 
-// 2. Accounts & HWID Bans
+// 2. Accounts
 let accounts = {};
 if (fs.existsSync(ACCOUNTS_FILE)) {
   try { accounts = JSON.parse(fs.readFileSync(ACCOUNTS_FILE, 'utf8')); } catch (e) { accounts = {}; }
@@ -53,7 +54,7 @@ function hashPassword(pwd) {
   return crypto.createHash('sha256').update(pwd + PASSWORD_SALT).digest('hex');
 }
 
-// Ensure default admin account always exists
+// Default Admin Account
 if (Object.keys(accounts).length === 0) {
   accounts['admin@starly.client'] = {
     email: 'admin@starly.client',
@@ -82,7 +83,7 @@ function saveBannedHwids() {
   try { fs.writeFileSync(BANNED_HWIDS_FILE, JSON.stringify(bannedHwids, null, 2), 'utf8'); } catch (e) {}
 }
 
-// 3. Friend Markers Storage
+// 3. Markers
 let markers = [];
 if (fs.existsSync(MARKERS_FILE)) {
   try { markers = JSON.parse(fs.readFileSync(MARKERS_FILE, 'utf8')); } catch (e) { markers = []; }
@@ -91,7 +92,7 @@ function saveMarkers() {
   try { fs.writeFileSync(MARKERS_FILE, JSON.stringify(markers, null, 2), 'utf8'); } catch (e) {}
 }
 
-// 4. OTA Version Data
+// 4. OTA
 let versionData = {
   version: '1.21.11-v1.0.0',
   betaVersion: '1.21.11-v1.0.0-beta',
@@ -135,7 +136,6 @@ function verifyToken(token) {
     const expectedSig = crypto.createHmac('sha256', PASSWORD_SALT).update(payload).digest('hex');
     if (sig !== expectedSig) return null;
     
-    // Auto-restore account if server was restarted on Render
     let acc = Object.values(accounts).find(a => a.email.toLowerCase() === email.toLowerCase());
     if (!acc) {
       acc = {
@@ -194,16 +194,14 @@ const DASHBOARD_HTML = `<!doctype html>
     input:focus, textarea:focus, select:focus { border-color: #5c7cfa; }
     textarea { min-height: 80px; resize: vertical; }
     
-    button { padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s ease; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-    button:active { transform: scale(0.98); }
-    .btn-primary { background: #238636; color: #fff; }
-    .btn-primary:hover { background: #2ea043; }
-    .btn-blue { background: #5c7cfa; color: #fff; }
-    .btn-blue:hover { background: #748ffc; }
-    .btn-purple { background: #845ef7; color: #fff; }
-    .btn-purple:hover { background: #9775fa; }
-    .btn-danger { background: #da3633; color: #fff; }
-    .btn-danger:hover { background: #f85149; }
+    button { padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s ease; display: inline-flex; align-items: center; justify-content: center; gap: 6px; user-select: none; }
+    button:hover { filter: brightness(1.15); transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+    
+    .btn-primary { background: #238636 !important; color: #fff !important; }
+    .btn-blue { background: #5c7cfa !important; color: #fff !important; }
+    .btn-purple { background: #845ef7 !important; color: #fff !important; }
+    .btn-danger { background: #da3633 !important; color: #fff !important; }
     .btn-sm { padding: 6px 11px; font-size: 11.5px; border-radius: 6px; margin-right: 4px; margin-bottom: 4px; }
     
     /* Table */
@@ -231,8 +229,8 @@ const DASHBOARD_HTML = `<!doctype html>
     .sub-note { font-size: 12px; color: #8b949e; margin-bottom: 12px; }
 
     /* Toast Notification */
-    #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
-    .toast { padding: 14px 20px; border-radius: 10px; font-size: 13.5px; font-weight: 600; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.5); animation: slideIn 0.25s ease; max-width: 380px; }
+    #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+    .toast { padding: 14px 20px; border-radius: 10px; font-size: 13.5px; font-weight: 600; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.5); animation: slideIn 0.25s ease; max-width: 380px; pointer-events: auto; }
     .toast-success { background: #238636; border: 1px solid #2ea043; }
     .toast-error { background: #da3633; border: 1px solid #f85149; }
     .toast-info { background: #1f6feb; border: 1px solid #388bfd; }
@@ -253,7 +251,7 @@ const DASHBOARD_HTML = `<!doctype html>
           <span class="brand-sub">Панель управления</span>
         </div>
       </div>
-      <button onclick="refreshAll()" class="btn-blue">🔄 Обновить данные</button>
+      <button id="btn-top-refresh" class="btn-blue">🔄 Обновить данные</button>
     </header>
 
     <!-- SECTION 1: SYSTEM STATUS -->
@@ -285,7 +283,7 @@ const DASHBOARD_HTML = `<!doctype html>
     <div class="card">
       <div class="card-header">
         <h2>👥 Зарегистрированные аккаунты (<span id="user-count-badge">1</span>)</h2>
-        <button onclick="loadUsers()" class="btn-blue btn-sm">🔄 Обновить список</button>
+        <button id="btn-refresh-users" class="btn-blue btn-sm">🔄 Обновить список</button>
       </div>
       <p class="sub-note">Все зарегистрированные игроки. Вы можете выдавать Beta-доступ, Owner или банить по HWID.</p>
       
@@ -334,7 +332,7 @@ const DASHBOARD_HTML = `<!doctype html>
             <input id="create-nick" value="Player1" placeholder="Введите ник">
           </div>
           <div class="col">
-            <label>Email почта (необязательно)</label>
+            <label>Email почта</label>
             <input id="create-email" value="player1@starly.client" type="email" placeholder="user@gmail.com">
           </div>
         </div>
@@ -352,7 +350,7 @@ const DASHBOARD_HTML = `<!doctype html>
             </select>
           </div>
         </div>
-        <button id="btn-create-acc" onclick="createAccountDirectly()" class="btn-primary" style="width: 100%; margin-top: 4px;">➕ Создать аккаунт</button>
+        <button id="btn-create-acc" class="btn-primary" style="width: 100%; margin-top: 4px;">➕ Создать аккаунт</button>
       </div>
 
       <!-- Ban User -->
@@ -372,7 +370,7 @@ const DASHBOARD_HTML = `<!doctype html>
             <input id="ban-input-reason" value="Нарушение правил" placeholder="Причина бана">
           </div>
         </div>
-        <button id="btn-ban-action" onclick="submitBan()" class="btn-danger" style="width: 100%; margin-top: 4px;">🚫 Забанить (Аккаунт + HWID)</button>
+        <button id="btn-ban-action" class="btn-danger" style="width: 100%; margin-top: 4px;">🚫 Забанить (Аккаунт + HWID)</button>
       </div>
 
     </div>
@@ -381,7 +379,7 @@ const DASHBOARD_HTML = `<!doctype html>
     <div class="card">
       <div class="card-header">
         <h2>🚀 Публикация обновлений клиента (OTA)</h2>
-        <button onclick="loadVersionData()" class="btn-blue btn-sm">🔄 Обновить версии</button>
+        <button id="btn-refresh-ota" class="btn-blue btn-sm">🔄 Обновить версии</button>
       </div>
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
@@ -407,7 +405,7 @@ const DASHBOARD_HTML = `<!doctype html>
               <input type="file" id="ota-release-file" accept=".jar">
             </div>
           </div>
-          <button id="btn-pub-release" onclick="publishRelease(false)" class="btn-primary" style="width: 100%; margin-top: 8px;">🚀 Опубликовать Релиз</button>
+          <button id="btn-pub-release" class="btn-primary" style="width: 100%; margin-top: 8px;">🚀 Опубликовать Релиз</button>
         </div>
 
         <!-- Beta Channel -->
@@ -431,7 +429,7 @@ const DASHBOARD_HTML = `<!doctype html>
               <input type="file" id="ota-beta-file" accept=".jar">
             </div>
           </div>
-          <button id="btn-pub-beta" onclick="publishRelease(true)" class="btn-purple" style="width: 100%; margin-top: 8px;">⚡ Опубликовать Beta</button>
+          <button id="btn-pub-beta" class="btn-purple" style="width: 100%; margin-top: 8px;">⚡ Опубликовать Beta</button>
         </div>
 
       </div>
@@ -444,7 +442,7 @@ const DASHBOARD_HTML = `<!doctype html>
       <div class="card">
         <div class="card-header">
           <h2>✨ Активная косметика и аватары</h2>
-          <button onclick="loadCosmetics()" class="btn-blue btn-sm">🔄 Обновить</button>
+          <button id="btn-refresh-cosmetics" class="btn-blue btn-sm">🔄 Обновить</button>
         </div>
         <pre id="cosmetics-json" class="code-box">Загрузка данных косметики...</pre>
       </div>
@@ -453,7 +451,7 @@ const DASHBOARD_HTML = `<!doctype html>
       <div class="card">
         <div class="card-header">
           <h2>📍 Метки игроков на серверах</h2>
-          <button onclick="loadMarkers()" class="btn-blue btn-sm">🔄 Обновить</button>
+          <button id="btn-refresh-markers" class="btn-blue btn-sm">🔄 Обновить</button>
         </div>
         <pre id="markers-json" class="code-box">Загрузка меток...</pre>
       </div>
@@ -463,6 +461,7 @@ const DASHBOARD_HTML = `<!doctype html>
   </div>
 
   <script>
+    // Universal Toast Notification
     function showToast(msg, type) {
       type = type || 'info';
       var container = document.getElementById('toast-container');
@@ -486,17 +485,26 @@ const DASHBOARD_HTML = `<!doctype html>
     }
 
     function createAccountDirectly() {
-      var nick = (document.getElementById('create-nick').value || '').trim();
-      var email = (document.getElementById('create-email').value || '').trim();
-      var pwd = document.getElementById('create-pwd').value || '';
-      var role = document.getElementById('create-role').value || 'user';
+      var nickInput = document.getElementById('create-nick');
+      var emailInput = document.getElementById('create-email');
+      var pwdInput = document.getElementById('create-pwd');
+      var roleInput = document.getElementById('create-role');
       var btn = document.getElementById('btn-create-acc');
 
+      var nick = (nickInput ? nickInput.value : '').trim();
+      var email = (emailInput ? emailInput.value : '').trim();
+      var pwd = (pwdInput ? pwdInput.value : '').trim();
+      var role = roleInput ? roleInput.value : 'user';
+
       if (!nick) {
-        return showToast('Введите никнейм!', 'error');
+        showToast('Введите никнейм!', 'error');
+        alert('Введите никнейм!');
+        return;
       }
       if (!pwd) {
-        return showToast('Введите пароль!', 'error');
+        showToast('Введите пароль!', 'error');
+        alert('Введите пароль!');
+        return;
       }
       if (!email || email.indexOf('@') === -1) {
         email = nick.toLowerCase().replace(/[^a-z0-9]/g, '') + '@starly.client';
@@ -521,14 +529,17 @@ const DASHBOARD_HTML = `<!doctype html>
             }).then(function() { loadUsers(); });
           }
           showToast('Аккаунт ' + nick + ' успешно создан!', 'success');
+          alert('Аккаунт ' + nick + ' успешно создан!');
           loadUsers();
         } else {
           showToast('Ошибка: ' + (res.error || 'Не удалось создать'), 'error');
+          alert('Ошибка: ' + (res.error || 'Не удалось создать'));
         }
       })
       .catch(function(err) {
         if (btn) btn.textContent = '➕ Создать аккаунт';
         showToast('Сетевая ошибка: ' + err.message, 'error');
+        alert('Сетевая ошибка: ' + err.message);
       });
     }
 
@@ -601,9 +612,11 @@ const DASHBOARD_HTML = `<!doctype html>
       .then(function(data) {
         if (data.success) {
           showToast('Роль игрока ' + nick + ' изменена на ' + role, 'success');
+          alert('Роль игрока ' + nick + ' изменена на ' + role);
           loadUsers();
         } else {
           showToast('Ошибка: ' + (data.error || 'Не удалось сменить роль'), 'error');
+          alert('Ошибка: ' + (data.error || 'Не удалось сменить роль'));
         }
       });
     }
@@ -615,6 +628,7 @@ const DASHBOARD_HTML = `<!doctype html>
         body: JSON.stringify({ nickname: nick })
       }).then(function() {
         showToast('Игрок ' + nick + ' разбанен!', 'success');
+        alert('Игрок ' + nick + ' разбанен!');
         loadUsers();
       });
     }
@@ -628,6 +642,7 @@ const DASHBOARD_HTML = `<!doctype html>
           body: JSON.stringify({ nickname: nick, reason: reason })
         }).then(function() {
           showToast('Игрок ' + nick + ' забанен по HWID', 'error');
+          alert('Игрок ' + nick + ' забанен по HWID');
           loadUsers();
         });
       }
@@ -640,7 +655,11 @@ const DASHBOARD_HTML = `<!doctype html>
       var reason = (reasonInput ? reasonInput.value.trim() : '') || 'Заблокирован администратором';
       var btn = document.getElementById('btn-ban-action');
 
-      if (!nick) return showToast('Введите никнейм игрока для бана!', 'error');
+      if (!nick) {
+        showToast('Введите никнейм игрока для бана!', 'error');
+        alert('Введите никнейм игрока для бана!');
+        return;
+      }
 
       if (btn) btn.textContent = '⏳ Блокировка...';
 
@@ -654,15 +673,18 @@ const DASHBOARD_HTML = `<!doctype html>
         if (btn) btn.textContent = '🚫 Забанить (Аккаунт + HWID)';
         if (data.success) {
           showToast(data.message, 'success');
+          alert(data.message);
           if (nickInput) nickInput.value = '';
           loadUsers();
         } else {
           showToast('Ошибка: ' + (data.error || 'Не удалось забанить'), 'error');
+          alert('Ошибка: ' + (data.error || 'Не удалось забанить'));
         }
       })
       .catch(function(e) {
         if (btn) btn.textContent = '🚫 Забанить (Аккаунт + HWID)';
         showToast('Ошибка: ' + e.message, 'error');
+        alert('Ошибка: ' + e.message);
       });
     }
 
@@ -695,7 +717,11 @@ const DASHBOARD_HTML = `<!doctype html>
       var version = verInput ? verInput.value.trim() : '';
       var changelog = logInput ? logInput.value.trim() : '';
 
-      if (!version) return showToast('Укажите версию обновления!', 'error');
+      if (!version) {
+        showToast('Укажите версию обновления!', 'error');
+        alert('Укажите версию обновления!');
+        return;
+      }
 
       if (btn) btn.textContent = '⏳ Публикация...';
 
@@ -718,6 +744,7 @@ const DASHBOARD_HTML = `<!doctype html>
             }).then(function() {
               if (btn) btn.textContent = isBeta ? '⚡ Опубликовать Beta' : '🚀 Опубликовать Релиз';
               showToast((isBeta ? 'Beta' : 'Релизное') + ' обновление с JAR файлом успешно опубликовано!', 'success');
+              alert((isBeta ? 'Beta' : 'Релизное') + ' обновление с JAR файлом успешно опубликовано!');
               loadVersionData();
             });
           };
@@ -725,12 +752,14 @@ const DASHBOARD_HTML = `<!doctype html>
         } else {
           if (btn) btn.textContent = isBeta ? '⚡ Опубликовать Beta' : '🚀 Опубликовать Релиз';
           showToast((isBeta ? 'Beta' : 'Релизное') + ' обновление опубликовано (версия обновлена)!', 'success');
+          alert((isBeta ? 'Beta' : 'Релизное') + ' обновление опубликовано (версия обновлена)!');
           loadVersionData();
         }
       })
       .catch(function(err) {
         if (btn) btn.textContent = isBeta ? '⚡ Опубликовать Beta' : '🚀 Опубликовать Релиз';
         showToast('Ошибка публикации: ' + err.message, 'error');
+        alert('Ошибка публикации: ' + err.message);
       });
     }
 
@@ -758,12 +787,26 @@ const DASHBOARD_HTML = `<!doctype html>
       });
     }
 
+    // Direct Event Listeners
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('btn-top-refresh')?.addEventListener('click', refreshAll);
+      document.getElementById('btn-refresh-users')?.addEventListener('click', loadUsers);
+      document.getElementById('btn-create-acc')?.addEventListener('click', createAccountDirectly);
+      document.getElementById('btn-ban-action')?.addEventListener('click', submitBan);
+      document.getElementById('btn-refresh-ota')?.addEventListener('click', loadVersionData);
+      document.getElementById('btn-pub-release')?.addEventListener('click', function() { publishRelease(false); });
+      document.getElementById('btn-pub-beta')?.addEventListener('click', function() { publishRelease(true); });
+      document.getElementById('btn-refresh-cosmetics')?.addEventListener('click', loadCosmetics);
+      document.getElementById('btn-refresh-markers')?.addEventListener('click', loadMarkers);
+
+      loadUsers();
+      loadVersionData();
+      setInterval(loadUsers, 2500);
+    });
+
     window.onload = function() {
       loadUsers();
       loadVersionData();
-      setInterval(function() {
-        loadUsers();
-      }, 2500);
     };
   </script>
 </body>
@@ -1141,5 +1184,5 @@ app.post('/api/markers', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[StarlyServer] Running on port ${PORT} with Pre-filled Defaults & Persistent Admin Account`);
+  console.log(`[StarlyServer] Running on port ${PORT} with Guaranteed Click Handlers`);
 });
