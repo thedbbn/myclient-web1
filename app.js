@@ -94,6 +94,7 @@ window.loadUsers = function() {
         if (role !== 'owner') {
           roleButtons += '<button class="btn-primary btn-sm" onclick="window.setRole(\'' + window.escapeHtml(nick) + '\', \'owner\')">Owner</button> ';
         }
+        roleButtons += '<button class="btn-blue btn-sm" onclick="window.changePasswordPrompt(\'' + window.escapeHtml(nick) + '\')">Пароль</button> ';
         if (u.banned) {
           roleButtons += '<button class="btn-primary btn-sm" onclick="window.unban(\'' + window.escapeHtml(nick) + '\')">Разбанить</button>';
         } else {
@@ -130,6 +131,62 @@ window.setRole = function(nick, role) {
     } else {
       alert('Ошибка: ' + (data.error || 'Ошибка смены роли'));
     }
+  });
+};
+
+window.changePasswordPrompt = function(nick) {
+  var newPwd = prompt('Введите новый пароль для игрока ' + nick + ':', '');
+  if (newPwd && newPwd.trim().length > 0) {
+    fetch('/api/user/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nickname: nick, newPassword: newPwd.trim() })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.success) {
+        alert('Пароль для игрока ' + nick + ' успешно изменён на: ' + newPwd.trim());
+      } else {
+        alert('Ошибка: ' + (data.error || 'Не удалось изменить пароль'));
+      }
+    })
+    .catch(function(err) {
+      alert('Ошибка соединения: ' + err.message);
+    });
+  }
+};
+
+window.submitChangePasswordForm = function() {
+  var nickInput = document.getElementById('pwd-input-nick');
+  var pwdInput = document.getElementById('pwd-input-new');
+  var nick = nickInput ? nickInput.value.trim() : '';
+  var newPwd = pwdInput ? pwdInput.value.trim() : '';
+
+  if (!nick) {
+    alert('Введите никнейм игрока!');
+    return;
+  }
+  if (!newPwd || newPwd.length < 3) {
+    alert('Введите новый пароль (минимум 3 символа)!');
+    return;
+  }
+
+  fetch('/api/user/reset-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nickname: nick, newPassword: newPwd })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data.success) {
+      alert(data.message || ('Пароль для игрока ' + nick + ' успешно изменен!'));
+      if (pwdInput) pwdInput.value = '';
+    } else {
+      alert('Ошибка: ' + (data.error || 'Не удалось изменить пароль'));
+    }
+  })
+  .catch(function(err) {
+    alert('Ошибка соединения: ' + err.message);
   });
 };
 

@@ -257,7 +257,7 @@ const DASHBOARD_HTML = `<!doctype html>
               <th>Роль</th>
               <th>HWID</th>
               <th>Статус</th>
-              <th>Управление</th>
+              <th>Управление (Beta / Owner / Смена пароля / Бан)</th>
             </tr>
           </thead>
           <tbody id="users-table-body">
@@ -268,7 +268,8 @@ const DASHBOARD_HTML = `<!doctype html>
               <td>-</td>
               <td><span class="badge badge-active">АКТИВЕН</span></td>
               <td>
-                <button class="btn-purple btn-sm" onclick="window.setRole('Admin', 'beta')">Выдать Beta</button>
+                <button class="btn-purple btn-sm" onclick="window.setRole('Admin', 'beta')">Beta</button>
+                <button class="btn-blue btn-sm" onclick="window.changePasswordPrompt('Admin')">Пароль</button>
                 <button class="btn-danger btn-sm" onclick="window.quickBan('Admin')">Бан</button>
               </td>
             </tr>
@@ -277,8 +278,9 @@ const DASHBOARD_HTML = `<!doctype html>
       </div>
     </div>
 
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
       
+      <!-- Create Account -->
       <div class="card">
         <div class="card-header">
           <h2>Создать аккаунт</h2>
@@ -310,6 +312,27 @@ const DASHBOARD_HTML = `<!doctype html>
         <button id="btn-create-acc" onclick="window.createAccountDirectly()" class="btn-primary" style="width: 100%;">Создать аккаунт</button>
       </div>
 
+      <!-- Change Password -->
+      <div class="card">
+        <div class="card-header">
+          <h2>Смена пароля игрока</h2>
+        </div>
+        <div class="row">
+          <div class="col">
+            <label>Никнейм игрока</label>
+            <input id="pwd-input-nick" placeholder="Ник игрока">
+          </div>
+        </div>
+        <div class="row">
+          <div class="col">
+            <label>Новый пароль</label>
+            <input id="pwd-input-new" type="text" placeholder="Новый пароль">
+          </div>
+        </div>
+        <button onclick="window.submitChangePasswordForm()" class="btn-blue" style="width: 100%;">Сохранить новый пароль</button>
+      </div>
+
+      <!-- Ban Form -->
       <div class="card">
         <div class="card-header">
           <h2>Бан по HWID</h2>
@@ -575,6 +598,28 @@ app.get('/api/auth/verify', (req, res) => {
   });
 });
 
+// Admin: Reset Password for user
+app.post('/api/user/reset-password', (req, res) => {
+  const { nickname, email, newPassword } = req.body;
+  if (!newPassword || newPassword.length < 3) {
+    return res.status(400).json({ success: false, error: 'Пароль должен быть не менее 3 символов' });
+  }
+
+  const acc = Object.values(accounts).find(a => 
+    (nickname && a.nickname.toLowerCase() === nickname.toLowerCase()) ||
+    (email && a.email.toLowerCase() === email.toLowerCase())
+  );
+
+  if (!acc) {
+    return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+  }
+
+  acc.passwordHash = hashPassword(newPassword);
+  saveAccounts();
+
+  res.json({ success: true, message: `Пароль для ${acc.nickname} успешно обновлен на новый` });
+});
+
 app.post('/api/user/ban', (req, res) => {
   const { nickname, email, reason, banHwid } = req.body;
   const acc = Object.values(accounts).find(a => 
@@ -706,5 +751,5 @@ app.get('/api/loader/download-beta', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[StarlyServer] Running on port ${PORT}`);
+  console.log(`[StarlyServer] Running on port ${PORT} with Password Reset support`);
 });
