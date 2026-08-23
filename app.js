@@ -190,6 +190,42 @@ window.submitChangePasswordForm = function() {
   });
 };
 
+window.exportDatabase = function() {
+  window.open('/api/admin/export-db', '_blank');
+};
+
+window.importDatabase = function() {
+  var fileInput = document.getElementById('db-import-file');
+  if (!fileInput || !fileInput.files.length) {
+    alert('Выберите JSON файл резервной копии базы!');
+    return;
+  }
+  var file = fileInput.files[0];
+  var reader = new FileReader();
+  reader.onload = function() {
+    try {
+      var data = JSON.parse(reader.result);
+      fetch('/api/admin/import-db', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        if (res.success) {
+          alert('База данных успешно импортирована! Восстановлено аккаунтов: ' + (res.accountsCount || 0));
+          window.loadUsers();
+        } else {
+          alert('Ошибка импорта: ' + (res.error || 'Сбой'));
+        }
+      });
+    } catch (e) {
+      alert('Неверный формат JSON файла базы: ' + e.message);
+    }
+  };
+  reader.readAsText(file);
+};
+
 window.unban = function(nick) {
   fetch('/api/user/unban', {
     method: 'POST',

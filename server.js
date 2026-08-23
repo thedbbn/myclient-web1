@@ -32,12 +32,8 @@ if (!fs.existsSync(STORAGE_DIR)) {
   fs.mkdirSync(STORAGE_DIR, { recursive: true });
 }
 
-let cosmeticsData = {};
-if (fs.existsSync(DATA_FILE)) {
-  try { cosmeticsData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); } catch (e) { cosmeticsData = {}; }
-}
-function saveCosmeticsData() {
-  try { fs.writeFileSync(DATA_FILE, JSON.stringify(cosmeticsData, null, 2), 'utf8'); } catch (e) {}
+function hashPassword(pwd) {
+  return crypto.createHash('sha256').update(pwd + PASSWORD_SALT).digest('hex');
 }
 
 let accounts = {};
@@ -45,10 +41,7 @@ if (fs.existsSync(ACCOUNTS_FILE)) {
   try { accounts = JSON.parse(fs.readFileSync(ACCOUNTS_FILE, 'utf8')); } catch (e) { accounts = {}; }
 }
 
-function hashPassword(pwd) {
-  return crypto.createHash('sha256').update(pwd + PASSWORD_SALT).digest('hex');
-}
-
+// Fallback accounts if empty
 if (Object.keys(accounts).length === 0) {
   accounts['admin@starly.client'] = {
     email: 'admin@starly.client',
@@ -64,25 +57,19 @@ if (Object.keys(accounts).length === 0) {
   };
 }
 
-function saveAccounts() {
-  try { fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(accounts, null, 2), 'utf8'); } catch (e) {}
-}
-saveAccounts();
-
 let bannedHwids = {};
 if (fs.existsSync(BANNED_HWIDS_FILE)) {
   try { bannedHwids = JSON.parse(fs.readFileSync(BANNED_HWIDS_FILE, 'utf8')); } catch (e) { bannedHwids = {}; }
 }
-function saveBannedHwids() {
-  try { fs.writeFileSync(BANNED_HWIDS_FILE, JSON.stringify(bannedHwids, null, 2), 'utf8'); } catch (e) {}
+
+let cosmeticsData = {};
+if (fs.existsSync(DATA_FILE)) {
+  try { cosmeticsData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); } catch (e) { cosmeticsData = {}; }
 }
 
 let markers = [];
 if (fs.existsSync(MARKERS_FILE)) {
   try { markers = JSON.parse(fs.readFileSync(MARKERS_FILE, 'utf8')); } catch (e) { markers = []; }
-}
-function saveMarkers() {
-  try { fs.writeFileSync(MARKERS_FILE, JSON.stringify(markers, null, 2), 'utf8'); } catch (e) {}
 }
 
 let versionData = {
@@ -97,9 +84,24 @@ let versionData = {
 if (fs.existsSync(VERSION_FILE)) {
   try { versionData = JSON.parse(fs.readFileSync(VERSION_FILE, 'utf8')); } catch (e) {}
 }
+
+function saveAccounts() {
+  try { fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(accounts, null, 2), 'utf8'); } catch (e) {}
+}
+function saveBannedHwids() {
+  try { fs.writeFileSync(BANNED_HWIDS_FILE, JSON.stringify(bannedHwids, null, 2), 'utf8'); } catch (e) {}
+}
+function saveCosmeticsData() {
+  try { fs.writeFileSync(DATA_FILE, JSON.stringify(cosmeticsData, null, 2), 'utf8'); } catch (e) {}
+}
+function saveMarkers() {
+  try { fs.writeFileSync(MARKERS_FILE, JSON.stringify(markers, null, 2), 'utf8'); } catch (e) {}
+}
 function saveVersion() {
   try { fs.writeFileSync(VERSION_FILE, JSON.stringify(versionData, null, 2), 'utf8'); } catch (e) {}
 }
+
+saveAccounts();
 
 function isHwidBanned(hwid) {
   if (!hwid) return false;
@@ -216,7 +218,10 @@ const DASHBOARD_HTML = `<!doctype html>
         <h1 class="brand-title">Starly Client</h1>
         <span class="brand-sub">Панель управления</span>
       </div>
-      <button id="btn-top-refresh" onclick="window.refreshAll()" class="btn-blue">Обновить данные</button>
+      <div style="display: flex; gap: 8px;">
+        <button onclick="window.exportDatabase()" class="btn-primary btn-sm">💾 Экспорт базы (Backup)</button>
+        <button id="btn-top-refresh" onclick="window.refreshAll()" class="btn-blue btn-sm">Обновить данные</button>
+      </div>
     </header>
 
     <div class="card">
@@ -239,6 +244,25 @@ const DASHBOARD_HTML = `<!doctype html>
         <div class="stat-card">
           <span class="stat-title">Защита HWID</span>
           <span class="stat-value" style="color: #58a6ff;">Активна</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Backup & Restore Box -->
+    <div class="card" style="border-left: 4px solid #5c7cfa;">
+      <div class="card-header">
+        <h2>Резервное копирование и Восстановление базы</h2>
+      </div>
+      <p style="color: #8b949e; font-size: 13px; margin-bottom: 14px;">
+        Сохраняйте резервную копию базы перед обновлениями или восстанавливайте аккаунты в 1 клик.
+      </p>
+      <div class="row" style="align-items: center;">
+        <div class="col">
+          <button onclick="window.exportDatabase()" class="btn-primary" style="width: 100%;">📥 Скачать копию базы (.json)</button>
+        </div>
+        <div class="col" style="display: flex; flex-direction: row; gap: 8px;">
+          <input type="file" id="db-import-file" accept=".json" style="flex: 1;">
+          <button onclick="window.importDatabase()" class="btn-blue">📤 Восстановить базу</button>
         </div>
       </div>
     </div>
@@ -427,6 +451,52 @@ app.get('/app.js', (req, res) => {
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.sendFile(path.join(__dirname, 'app.js'));
+});
+
+// Admin DB Export
+app.get('/api/admin/export-db', (req, res) => {
+  const exportData = {
+    exportDate: new Date().toISOString(),
+    accounts: accounts,
+    bannedHwids: bannedHwids,
+    versionData: versionData,
+    cosmetics: cosmeticsData,
+    markers: markers
+  };
+  res.setHeader('Content-Disposition', `attachment; filename=starly_backup_${Date.now()}.json`);
+  res.setHeader('Content-Type', 'application/json');
+  res.send(JSON.stringify(exportData, null, 2));
+});
+
+// Admin DB Import
+app.post('/api/admin/import-db', (req, res) => {
+  const data = req.body;
+  if (!data || typeof data !== 'object') {
+    return res.status(400).json({ error: 'Неверный формат' });
+  }
+
+  if (data.accounts && typeof data.accounts === 'object') {
+    accounts = { ...accounts, ...data.accounts };
+    saveAccounts();
+  }
+  if (data.bannedHwids && typeof data.bannedHwids === 'object') {
+    bannedHwids = { ...bannedHwids, ...data.bannedHwids };
+    saveBannedHwids();
+  }
+  if (data.cosmetics && typeof data.cosmetics === 'object') {
+    cosmeticsData = { ...cosmeticsData, ...data.cosmetics };
+    saveCosmeticsData();
+  }
+  if (data.markers && Array.isArray(data.markers)) {
+    markers = data.markers;
+    saveMarkers();
+  }
+
+  res.json({
+    success: true,
+    accountsCount: Object.keys(accounts).length,
+    message: 'База успешно восстановлена!'
+  });
 });
 
 // APIs
@@ -777,5 +847,5 @@ app.get('/api/loader/download-beta', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[StarlyServer] Running on port ${PORT} with Password Reset support`);
+  console.log(`[StarlyServer] Running on port ${PORT} with Backup/Restore DB support`);
 });
