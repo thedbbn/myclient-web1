@@ -462,8 +462,14 @@ const DASHBOARD_HTML = `<!doctype html>
       var role = document.getElementById('create-role').value || 'user';
       var btn = document.getElementById('btn-create-acc');
 
-      if (!nick || !email || !pwd) {
-        return showToast('Заполните никнейм, email и пароль!', 'error');
+      if (!nick) {
+        return showToast('Введите никнейм!', 'error');
+      }
+      if (!pwd) {
+        return showToast('Введите пароль!', 'error');
+      }
+      if (!email || email.indexOf('@') === -1) {
+        email = nick.toLowerCase().replace(/[^a-z0-9]/g, '') + '@starly.client';
       }
 
       if (btn) btn.textContent = '⏳ Создание...';
@@ -724,6 +730,10 @@ const DASHBOARD_HTML = `<!doctype html>
 
     window.onload = function() {
       refreshAll();
+      setInterval(function() {
+        loadUsers();
+        loadVersionData();
+      }, 3000);
     };
   </script>
 </body>
