@@ -139,20 +139,18 @@ const DASHBOARD_HTML = `<!doctype html>
     body { font-family: 'Inter', sans-serif; background: #0b0f17; color: #e6edf3; min-height: 100vh; }
     .app { display: flex; min-height: 100vh; }
     
-    /* Sidebar */
     .sidebar { width: 270px; background: #131a26; border-right: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; padding: 24px 16px; }
     .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; padding-left: 6px; }
-    .star-icon { font-size: 24px; color: #5c7cfa; filter: drop-shadow(0 0 10px rgba(92,124,250,0.5)); }
+    .star-icon { font-size: 24px; color: #5c7cfa; }
     .brand h1 { font-family: 'Outfit', sans-serif; font-size: 20px; color: #fff; font-weight: 800; }
     .brand .sub { color: #5c7cfa; font-size: 13px; font-weight: 600; }
     
     .nav-menu { display: flex; flex-direction: column; gap: 6px; flex: 1; }
-    .nav-tab-btn { background: transparent; border: none; color: #8b949e; padding: 11px 14px; text-align: left; border-radius: 8px; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: all 0.18s ease; display: flex; align-items: center; gap: 8px; }
+    .nav-tab-btn { background: transparent; border: none; color: #8b949e; padding: 11px 14px; text-align: left; border-radius: 8px; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: all 0.15s ease; display: block; width: 100%; }
     .nav-tab-btn:hover { background: rgba(255, 255, 255, 0.05); color: #c9d1d9; }
     .nav-tab-btn.active { background: rgba(92, 124, 250, 0.18) !important; color: #748ffc !important; border: 1px solid rgba(92, 124, 250, 0.35) !important; }
     .sidebar-footer { font-size: 11px; color: #5c6370; text-align: center; padding-top: 12px; }
     
-    /* Content Area */
     .content { flex: 1; padding: 32px 40px; overflow-y: auto; }
     .page-section { display: none; }
     .page-section.active { display: block; }
@@ -160,18 +158,18 @@ const DASHBOARD_HTML = `<!doctype html>
     .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
     .page-header h2 { font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 700; color: #fff; }
     
-    .card { background: #131a26; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 22px; margin-bottom: 22px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
-    .card h3 { font-size: 15px; margin-bottom: 14px; color: #e6edf3; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .card { background: #131a26; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 22px; margin-bottom: 22px; }
+    .card h3 { font-size: 15px; margin-bottom: 14px; color: #e6edf3; font-weight: 700; }
     
     .row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
-    .col { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 6px; }
+    .col { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 6px; }
     label { font-size: 12px; font-weight: 600; color: #8b949e; }
     
-    input, textarea, select { width: 100%; background: #0b0f17; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 10px 14px; color: #fff; font-size: 13px; font-family: inherit; outline: none; transition: border-color 0.15s ease; }
-    input:focus, textarea:focus, select:focus { border-color: #5c7cfa; box-shadow: 0 0 0 2px rgba(92,124,250,0.2); }
+    input, textarea, select { width: 100%; background: #0b0f17; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 10px 14px; color: #fff; font-size: 13px; font-family: inherit; outline: none; }
+    input:focus, textarea:focus, select:focus { border-color: #5c7cfa; }
     textarea { min-height: 80px; resize: vertical; }
     
-    button { padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s ease; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    button { padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s ease; }
     .btn-primary { background: #238636; color: #fff; }
     .btn-primary:hover { background: #2ea043; }
     .btn-blue { background: #5c7cfa; color: #fff; }
@@ -180,7 +178,7 @@ const DASHBOARD_HTML = `<!doctype html>
     .btn-purple:hover { background: #9775fa; }
     .btn-danger { background: #da3633; color: #fff; }
     .btn-danger:hover { background: #f85149; }
-    .btn-sm { padding: 5px 10px; font-size: 11.5px; border-radius: 6px; }
+    .btn-sm { padding: 5px 10px; font-size: 11.5px; border-radius: 6px; margin-right: 4px; }
     
     .table-responsive { overflow-x: auto; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); }
     .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -195,7 +193,7 @@ const DASHBOARD_HTML = `<!doctype html>
     .badge-banned { background: rgba(248, 81, 73, 0.2); color: #f85149; border: 1px solid rgba(248, 81, 73, 0.4); }
     .badge-active { background: rgba(46, 160, 67, 0.2); color: #3fb950; border: 1px solid rgba(46, 160, 67, 0.4); }
     
-    .actions-group { display: flex; gap: 6px; flex-wrap: wrap; }
+    .actions-group { display: flex; gap: 4px; flex-wrap: wrap; }
     .mono { font-family: monospace; font-size: 11.5px; color: #8b949e; }
     .code-box { background: #0b0f17; border: 1px solid rgba(255,255,255,0.08); padding: 14px; border-radius: 8px; font-family: monospace; font-size: 12px; overflow-x: auto; max-height: 400px; white-space: pre-wrap; color: #7ee787; }
     
@@ -216,11 +214,11 @@ const DASHBOARD_HTML = `<!doctype html>
         </div>
       </div>
       <nav class="nav-menu">
-        <button id="nav-btn-users" class="nav-tab-btn active" onclick="showTab('users')">👥 Пользователи и Бан-лист</button>
-        <button id="nav-btn-ota" class="nav-tab-btn" onclick="showTab('ota')">🚀 Выпуск обновлений (OTA)</button>
-        <button id="nav-btn-cosmetics" class="nav-tab-btn" onclick="showTab('cosmetics')">✨ Косметика и Аватары</button>
-        <button id="nav-btn-markers" class="nav-tab-btn" onclick="showTab('markers')">📍 Метки игроков</button>
-        <button id="nav-btn-status" class="nav-tab-btn" onclick="showTab('status')">⚡ Статус сервера</button>
+        <button id="nav-btn-users" class="nav-tab-btn active" onclick="tab('users')">👥 Пользователи и Бан-лист</button>
+        <button id="nav-btn-ota" class="nav-tab-btn" onclick="tab('ota')">🚀 Выпуск обновлений (OTA)</button>
+        <button id="nav-btn-cosmetics" class="nav-tab-btn" onclick="tab('cosmetics')">✨ Косметика и Аватары</button>
+        <button id="nav-btn-markers" class="nav-tab-btn" onclick="tab('markers')">📍 Метки игроков</button>
+        <button id="nav-btn-status" class="nav-tab-btn" onclick="tab('status')">⚡ Статус сервера</button>
       </nav>
       <div class="sidebar-footer">
         <span>Starly Client 1.21.11 Fabric</span>
@@ -232,9 +230,40 @@ const DASHBOARD_HTML = `<!doctype html>
       <section id="page-users" class="page-section active">
         <div class="page-header">
           <h2>👥 Управление пользователями, ролями и банами по HWID</h2>
-          <button onclick="loadUsers()" class="btn-blue">🔄 Обновить список</button>
+          <button onclick="loadUsers()" class="btn-blue">🔄 Обновить</button>
         </div>
 
+        <!-- Create Account Form -->
+        <div class="card">
+          <h3>➕ Создать / Зарегистрировать аккаунт</h3>
+          <div class="row">
+            <div class="col">
+              <label>Игровой никнейм</label>
+              <input id="create-nick" placeholder="Например: Player123">
+            </div>
+            <div class="col">
+              <label>Email почта</label>
+              <input id="create-email" type="email" placeholder="user@gmail.com">
+            </div>
+            <div class="col">
+              <label>Пароль</label>
+              <input id="create-pwd" type="password" placeholder="••••••••">
+            </div>
+            <div class="col">
+              <label>Роль</label>
+              <select id="create-role">
+                <option value="user">Игрок (User)</option>
+                <option value="beta">Beta тестер</option>
+                <option value="owner">Владелец (Owner)</option>
+              </select>
+            </div>
+            <div style="align-self: flex-end;">
+              <button onclick="createAccountDirectly()" class="btn-primary">Создать аккаунт</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ban User Form -->
         <div class="card">
           <h3>🚫 Быстрый бан пользователя и его устройства</h3>
           <div class="row">
@@ -252,6 +281,7 @@ const DASHBOARD_HTML = `<!doctype html>
           </div>
         </div>
 
+        <!-- Users Table -->
         <div class="card">
           <h3>📋 Зарегистрированные аккаунты (<span id="user-count-badge">0</span>)</h3>
           <div class="table-responsive">
@@ -263,7 +293,7 @@ const DASHBOARD_HTML = `<!doctype html>
                   <th>Роль</th>
                   <th>HWID устройства</th>
                   <th>Статус</th>
-                  <th>Управление ролями и доступом</th>
+                  <th>Управление</th>
                 </tr>
               </thead>
               <tbody id="users-table-body">
@@ -386,25 +416,61 @@ const DASHBOARD_HTML = `<!doctype html>
   </div>
 
   <script>
-    function showTab(tabName) {
-      var allTabs = ['users', 'ota', 'cosmetics', 'markers', 'status'];
-      for (var i = 0; i < allTabs.length; i++) {
-        var t = allTabs[i];
-        var b = document.getElementById('nav-btn-' + t);
-        var p = document.getElementById('page-' + t);
-        if (b) b.classList.remove('active');
-        if (p) p.classList.remove('active');
+    function tab(name) {
+      var tabs = ['users', 'ota', 'cosmetics', 'markers', 'status'];
+      for (var i = 0; i < tabs.length; i++) {
+        var t = tabs[i];
+        var btn = document.getElementById('nav-btn-' + t);
+        var sec = document.getElementById('page-' + t);
+        if (btn) btn.classList.remove('active');
+        if (sec) sec.classList.remove('active');
       }
 
-      var activeB = document.getElementById('nav-btn-' + tabName);
-      var activeP = document.getElementById('page-' + tabName);
-      if (activeB) activeB.classList.add('active');
-      if (activeP) activeP.classList.add('active');
+      var curBtn = document.getElementById('nav-btn-' + name);
+      var curSec = document.getElementById('page-' + name);
+      if (curBtn) curBtn.classList.add('active');
+      if (curSec) curSec.classList.add('active');
 
-      if (tabName === 'users') loadUsers();
-      if (tabName === 'ota') loadVersionData();
-      if (tabName === 'cosmetics') loadCosmetics();
-      if (tabName === 'markers') loadMarkers();
+      if (name === 'users') loadUsers();
+      if (name === 'ota') loadVersionData();
+      if (name === 'cosmetics') loadCosmetics();
+      if (name === 'markers') loadMarkers();
+    }
+
+    function createAccountDirectly() {
+      var nick = document.getElementById('create-nick').value.trim();
+      var email = document.getElementById('create-email').value.trim();
+      var pwd = document.getElementById('create-pwd').value;
+      var role = document.getElementById('create-role').value;
+
+      if (!nick || !email || !pwd) {
+        return alert('Заполните никнейм, email и пароль');
+      }
+
+      fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname: nick, email: email, password: pwd })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        if (res.success) {
+          if (role !== 'user') {
+            fetch('/api/user/set-role', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ nickname: nick, role: role })
+            }).then(function() { loadUsers(); });
+          }
+          alert('Аккаунт ' + nick + ' успешно создан!');
+          document.getElementById('create-nick').value = '';
+          document.getElementById('create-email').value = '';
+          document.getElementById('create-pwd').value = '';
+          loadUsers();
+        } else {
+          alert('Ошибка создания: ' + (res.error || 'Неизвестная ошибка'));
+        }
+      });
     }
 
     function loadUsers() {
@@ -417,7 +483,7 @@ const DASHBOARD_HTML = `<!doctype html>
         .then(function(users) {
           if (badge) badge.textContent = users.length || 0;
           if (!users || users.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #8b949e; padding: 24px;">Зарегистрированных пользователей пока нет. Зарегистрируйтесь в лоадере!</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #8b949e; padding: 24px;">Аккаунтов пока нет. Создайте аккаунт выше или зарегистрируйтесь в лоадере!</td></tr>';
             return;
           }
 
@@ -609,7 +675,6 @@ const DASHBOARD_HTML = `<!doctype html>
 </body>
 </html>`;
 
-// Serve Web Dashboard on GET / with strict no-cache headers
 app.get('/', (req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -987,5 +1052,5 @@ app.post('/api/markers', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[StarlyServer] Running on port ${PORT} with Instant Vanilla JS showTab()`);
+  console.log(`[StarlyServer] Running on port ${PORT} with Direct tab() Handler`);
 });
