@@ -21,12 +21,6 @@ app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 app.use(express.raw({ type: 'application/octet-stream', limit: '150mb' }));
 
-// Static files for Web Dashboard
-const PUBLIC_DIR = path.join(__dirname, 'public');
-if (fs.existsSync(PUBLIC_DIR)) {
-  app.use(express.static(PUBLIC_DIR));
-}
-
 const DATA_FILE = path.join(__dirname, 'data.json');
 const MARKERS_FILE = path.join(__dirname, 'markers.json');
 const ACCOUNTS_FILE = path.join(__dirname, 'accounts.json');
@@ -130,14 +124,304 @@ function verifyToken(token) {
   }
 }
 
+// ==================== EMBEDDED DASHBOARD HTML ====================
+const DASHBOARD_HTML = `<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Starly Client — Web Panel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; }
+    .app { display: flex; min-height: 100vh; }
+    .sidebar { width: 260px; background: #161b22; border-right: 1px solid #30363d; display: flex; flex-direction: column; padding: 24px 16px; }
+    .brand { display: flex; align-items: center; gap: 8px; margin-bottom: 28px; }
+    .star-icon { font-size: 22px; color: #58a6ff; }
+    .brand h1 { font-family: 'Outfit', sans-serif; font-size: 20px; color: #fff; }
+    .brand .sub { color: #58a6ff; font-size: 14px; }
+    .nav-menu { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+    .tab { background: transparent; border: none; color: #8b949e; padding: 10px 14px; text-align: left; border-radius: 8px; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: all 0.15s ease; }
+    .tab:hover { background: rgba(255, 255, 255, 0.05); color: #c9d1d9; }
+    .tab.active { background: rgba(88, 166, 255, 0.15); color: #58a6ff; border: 1px solid rgba(88, 166, 255, 0.3); }
+    .sidebar-footer { font-size: 11px; color: #484f58; text-align: center; }
+    .content { flex: 1; padding: 32px 40px; overflow-y: auto; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .page-header h2 { font-family: 'Outfit', sans-serif; font-size: 22px; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+    .card h3 { font-size: 15px; margin-bottom: 14px; color: #c9d1d9; }
+    .row { display: flex; gap: 10px; }
+    input { flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 9px 14px; color: #fff; font-size: 13px; outline: none; }
+    input:focus { border-color: #58a6ff; }
+    button { padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s ease; }
+    .btn-primary { background: #238636; color: #fff; }
+    .btn-primary:hover { background: #2ea043; }
+    .btn-danger { background: #da3633; color: #fff; }
+    .btn-danger:hover { background: #f85149; }
+    .btn-sm { padding: 4px 10px; font-size: 11.5px; }
+    .table-responsive { overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .data-table th { text-align: left; padding: 10px 12px; border-bottom: 1px solid #30363d; color: #8b949e; font-size: 12px; }
+    .data-table td { padding: 12px; border-bottom: 1px solid #21262d; }
+    .badge { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .badge-owner { background: rgba(210, 153, 34, 0.2); color: #d29922; }
+    .badge-beta { background: rgba(163, 113, 247, 0.2); color: #a371f7; }
+    .badge-user { background: rgba(88, 166, 255, 0.2); color: #58a6ff; }
+    .badge-banned { background: rgba(248, 81, 73, 0.2); color: #f85149; }
+    .badge-active { background: rgba(46, 160, 67, 0.2); color: #3fb950; }
+    .mono { font-family: monospace; font-size: 11.5px; }
+    .text-muted { color: #8b949e; }
+    .text-success { color: #3fb950; }
+    .text-info { color: #58a6ff; }
+    .code-box { background: #0d1117; border: 1px solid #30363d; padding: 14px; border-radius: 8px; font-family: monospace; font-size: 12px; overflow-x: auto; max-height: 400px; }
+    .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+    .stat-card { background: #0d1117; border: 1px solid #30363d; padding: 16px; border-radius: 8px; display: flex; flex-direction: column; gap: 6px; }
+    .stat-title { font-size: 12px; color: #8b949e; }
+    .stat-value { font-size: 18px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="star-icon">✦</span>
+        <h1>Starly <span class="sub">Server</span></h1>
+      </div>
+      <nav class="nav-menu">
+        <button class="tab active" data-tab="users">👥 Пользователи и Бан-лист</button>
+        <button class="tab" data-tab="cosmetics">✨ Косметика</button>
+        <button class="tab" data-tab="markers">📍 Метки игроков</button>
+        <button class="tab" data-tab="status">⚡ Статус сервера</button>
+      </nav>
+      <div class="sidebar-footer">
+        <span>Starly Client 1.21.11</span>
+      </div>
+    </aside>
+
+    <main class="content">
+      <!-- TAB 1: USERS & BANS -->
+      <section id="users" class="page active">
+        <div class="page-header">
+          <h2>Управление аккаунтами и банами по HWID</h2>
+          <button id="btn-refresh-users" class="btn-primary">Обновить список</button>
+        </div>
+
+        <div class="card">
+          <h3>Забанить пользователя или устройство</h3>
+          <div class="row">
+            <input id="ban-input-nick" placeholder="Никнейм или Email">
+            <input id="ban-input-reason" placeholder="Причина блокировки (чит, мультиакк и т.д.)">
+            <button id="btn-ban-user" class="btn-danger">Забанить (Аккаунт + HWID)</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Зарегистрированные аккаунты</h3>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Никнейм</th>
+                  <th>Email</th>
+                  <th>Роль</th>
+                  <th>HWID</th>
+                  <th>Статус</th>
+                  <th>Действия</th>
+                </tr>
+              </thead>
+              <tbody id="users-table-body">
+                <tr><td colspan="6" class="text-muted">Загрузка данных...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: COSMETICS -->
+      <section id="cosmetics" class="page">
+        <div class="page-header">
+          <h2>Синхронизация косметики игроков</h2>
+        </div>
+        <div class="card">
+          <p>Активная косметика синхронизируется между всеми игроками клиента автоматически.</p>
+          <pre id="cosmetics-json" class="code-box">Загрузка...</pre>
+        </div>
+      </section>
+
+      <!-- TAB 3: MARKERS -->
+      <section id="markers" class="page">
+        <div class="page-header">
+          <h2>Метки игроков (Web Markers)</h2>
+        </div>
+        <div class="card">
+          <p>Метки на карте друзей.</p>
+          <pre id="markers-json" class="code-box">Загрузка...</pre>
+        </div>
+      </section>
+
+      <!-- TAB 4: STATUS -->
+      <section id="status" class="page">
+        <div class="page-header">
+          <h2>Статус API сервера</h2>
+        </div>
+        <div class="card">
+          <div class="status-grid">
+            <div class="stat-card">
+              <span class="stat-title">Сервер API</span>
+              <span class="stat-value text-success">ONLINE</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-title">Версия Starly Client</span>
+              <span class="stat-value">1.21.11</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-title">Защита от обхода банов</span>
+              <span class="stat-value text-info">HWID Lock Active</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const tabs = document.querySelectorAll('.tab');
+      const pages = document.querySelectorAll('.page');
+
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => t.classList.remove('active'));
+          pages.forEach(p => p.classList.remove('active'));
+          tab.classList.add('active');
+          const target = document.getElementById(tab.dataset.tab);
+          if (target) target.classList.add('active');
+        });
+      });
+
+      const usersTableBody = document.getElementById('users-table-body');
+      const btnRefreshUsers = document.getElementById('btn-refresh-users');
+      const banInputNick = document.getElementById('ban-input-nick');
+      const banInputReason = document.getElementById('ban-input-reason');
+      const btnBanUser = document.getElementById('btn-ban-user');
+      const cosmeticsJson = document.getElementById('cosmetics-json');
+      const markersJson = document.getElementById('markers-json');
+
+      async function loadUsers() {
+        try {
+          const res = await fetch('/api/users');
+          const users = await res.json();
+          renderUsersTable(users);
+        } catch (e) {
+          usersTableBody.innerHTML = '<tr><td colspan="6" class="text-muted">Ошибка загрузки: ' + e.message + '</td></tr>';
+        }
+      }
+
+      function renderUsersTable(users) {
+        if (!users || users.length === 0) {
+          usersTableBody.innerHTML = '<tr><td colspan="6" class="text-muted">Пользователи еще не зарегистрированы.</td></tr>';
+          return;
+        }
+
+        usersTableBody.innerHTML = users.map(u => {
+          const hwidShort = u.hwid ? escapeHtml(u.hwid.substring(0, 16)) + '...' : '—';
+          const badgeClass = 'badge-' + (u.role || 'user');
+          const statusBadge = u.banned ? '<span class="badge badge-banned">ЗАБАНЕН (' + escapeHtml(u.banReason || 'Бан') + ')</span>' : '<span class="badge badge-active">АКТИВЕН</span>';
+          const actionBtn = u.banned 
+            ? '<button class="btn-primary btn-sm" onclick="unbanUser(\'' + escapeHtml(u.nickname) + '\')">Разбанить</button>'
+            : '<button class="btn-danger btn-sm" onclick="quickBanUser(\'' + escapeHtml(u.nickname) + '\')">Бан</button>';
+
+          return '<tr>' +
+            '<td><strong>' + escapeHtml(u.nickname) + '</strong></td>' +
+            '<td>' + escapeHtml(u.email) + '</td>' +
+            '<td><span class="badge ' + badgeClass + '">' + escapeHtml(u.role) + '</span></td>' +
+            '<td class="mono">' + hwidShort + '</td>' +
+            '<td>' + statusBadge + '</td>' +
+            '<td>' + actionBtn + '</td>' +
+            '</tr>';
+        }).join('');
+      }
+
+      window.unbanUser = async function(nick) {
+        await fetch('/api/user/unban', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nickname: nick })
+        });
+        loadUsers();
+      };
+
+      window.quickBanUser = async function(nick) {
+        const reason = prompt('Причина бана для игрока ' + nick + ':', 'Нарушение правил');
+        if (reason) {
+          await fetch('/api/user/ban', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nickname: nick, reason: reason })
+          });
+          loadUsers();
+        }
+      };
+
+      btnBanUser?.addEventListener('click', async () => {
+        const nick = banInputNick.value.trim();
+        const reason = banInputReason.value.trim() || 'Заблокирован администратором';
+        if (!nick) return alert('Введите никнейм или почту');
+
+        const res = await fetch('/api/user/ban', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nickname: nick, reason: reason })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(data.message);
+          banInputNick.value = '';
+          banInputReason.value = '';
+          loadUsers();
+        } else {
+          alert('Ошибка: ' + (data.error || 'Не удалось забанить'));
+        }
+      });
+
+      btnRefreshUsers?.addEventListener('click', loadUsers);
+
+      async function loadExtras() {
+        try {
+          const cosRes = await fetch('/api/cosmetics/all');
+          const cosData = await cosRes.json();
+          if (cosmeticsJson) cosmeticsJson.textContent = JSON.stringify(cosData, null, 2);
+        } catch (e) {}
+
+        try {
+          const markRes = await fetch('/api/markers');
+          const markData = await markRes.json();
+          if (markersJson) markersJson.textContent = JSON.stringify(markData, null, 2);
+        } catch (e) {}
+      }
+
+      function escapeHtml(str) {
+        return (str || '').replace(/[&<>"']/g, m => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+        })[m]);
+      }
+
+      loadUsers();
+      loadExtras();
+    });
+  </script>
+</body>
+</html>`;
+
 // Serve Web Dashboard on GET /
 app.get('/', (req, res) => {
-  const indexHtml = path.join(PUBLIC_DIR, 'index.html');
-  if (fs.existsSync(indexHtml)) {
-    res.sendFile(indexHtml);
-  } else {
-    res.json({ name: 'Starly Client API Server', status: 'online', accounts: Object.keys(accounts).length });
-  }
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(DASHBOARD_HTML);
 });
 
 // ==================== AUTH & REGISTRATION API ====================
@@ -391,6 +675,10 @@ app.get('/api/users', (req, res) => {
 });
 
 // ==================== COSMETICS API ====================
+app.get('/api/cosmetics/all', (req, res) => {
+  res.json(cosmeticsData);
+});
+
 app.get('/api/cosmetics/:id', (req, res) => {
   const id = req.params.id.toLowerCase();
   let match = cosmeticsData[id];
@@ -472,5 +760,5 @@ app.get('/api/loader/download-beta', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[StarlyServer] Running on port ${PORT} with Web Dashboard, Email Auth & HWID Protection`);
+  console.log(`[StarlyServer] Running on port ${PORT} with All-In-One Web Dashboard, Email Auth & HWID Protection`);
 });
