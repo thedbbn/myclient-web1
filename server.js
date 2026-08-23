@@ -12,7 +12,6 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-version, x-changelog, x-channel, x-hwid');
-  res.header('Content-Security-Policy', "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;");
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
@@ -251,7 +250,7 @@ const DASHBOARD_HTML = `<!doctype html>
           <span class="brand-sub">Панель управления</span>
         </div>
       </div>
-      <button id="btn-top-refresh" class="btn-blue">🔄 Обновить данные</button>
+      <button id="btn-top-refresh" onclick="window.refreshAll()" class="btn-blue">🔄 Обновить данные</button>
     </header>
 
     <!-- SECTION 1: SYSTEM STATUS -->
@@ -283,7 +282,7 @@ const DASHBOARD_HTML = `<!doctype html>
     <div class="card">
       <div class="card-header">
         <h2>👥 Зарегистрированные аккаунты (<span id="user-count-badge">1</span>)</h2>
-        <button id="btn-refresh-users" class="btn-blue btn-sm">🔄 Обновить список</button>
+        <button id="btn-refresh-users" onclick="window.loadUsers()" class="btn-blue btn-sm">🔄 Обновить список</button>
       </div>
       <p class="sub-note">Все зарегистрированные игроки. Вы можете выдавать Beta-доступ, Owner или банить по HWID.</p>
       
@@ -308,8 +307,8 @@ const DASHBOARD_HTML = `<!doctype html>
               <td><span class="badge badge-active">АКТИВЕН</span></td>
               <td>
                 <div class="actions-group">
-                  <button class="btn-purple btn-sm" onclick="setRole('Admin', 'beta')">✨ Выдать Beta</button>
-                  <button class="btn-danger btn-sm" onclick="quickBan('Admin')">🚫 Бан</button>
+                  <button class="btn-purple btn-sm" onclick="window.setRole('Admin', 'beta')">✨ Выдать Beta</button>
+                  <button class="btn-danger btn-sm" onclick="window.quickBan('Admin')">🚫 Бан</button>
                 </div>
               </td>
             </tr>
@@ -332,7 +331,7 @@ const DASHBOARD_HTML = `<!doctype html>
             <input id="create-nick" value="Player1" placeholder="Введите ник">
           </div>
           <div class="col">
-            <label>Email почта</label>
+            <label>Email почта (необязательно)</label>
             <input id="create-email" value="player1@starly.client" type="email" placeholder="user@gmail.com">
           </div>
         </div>
@@ -350,7 +349,7 @@ const DASHBOARD_HTML = `<!doctype html>
             </select>
           </div>
         </div>
-        <button id="btn-create-acc" class="btn-primary" style="width: 100%; margin-top: 4px;">➕ Создать аккаунт</button>
+        <button id="btn-create-acc" onclick="window.createAccountDirectly()" class="btn-primary" style="width: 100%; margin-top: 4px;">➕ Создать аккаунт</button>
       </div>
 
       <!-- Ban User -->
@@ -370,7 +369,7 @@ const DASHBOARD_HTML = `<!doctype html>
             <input id="ban-input-reason" value="Нарушение правил" placeholder="Причина бана">
           </div>
         </div>
-        <button id="btn-ban-action" class="btn-danger" style="width: 100%; margin-top: 4px;">🚫 Забанить (Аккаунт + HWID)</button>
+        <button id="btn-ban-action" onclick="window.submitBan()" class="btn-danger" style="width: 100%; margin-top: 4px;">🚫 Забанить (Аккаунт + HWID)</button>
       </div>
 
     </div>
@@ -379,7 +378,7 @@ const DASHBOARD_HTML = `<!doctype html>
     <div class="card">
       <div class="card-header">
         <h2>🚀 Публикация обновлений клиента (OTA)</h2>
-        <button id="btn-refresh-ota" class="btn-blue btn-sm">🔄 Обновить версии</button>
+        <button id="btn-refresh-ota" onclick="window.loadVersionData()" class="btn-blue btn-sm">🔄 Обновить версии</button>
       </div>
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
@@ -405,7 +404,7 @@ const DASHBOARD_HTML = `<!doctype html>
               <input type="file" id="ota-release-file" accept=".jar">
             </div>
           </div>
-          <button id="btn-pub-release" class="btn-primary" style="width: 100%; margin-top: 8px;">🚀 Опубликовать Релиз</button>
+          <button id="btn-pub-release" onclick="window.publishRelease(false)" class="btn-primary" style="width: 100%; margin-top: 8px;">🚀 Опубликовать Релиз</button>
         </div>
 
         <!-- Beta Channel -->
@@ -429,7 +428,7 @@ const DASHBOARD_HTML = `<!doctype html>
               <input type="file" id="ota-beta-file" accept=".jar">
             </div>
           </div>
-          <button id="btn-pub-beta" class="btn-purple" style="width: 100%; margin-top: 8px;">⚡ Опубликовать Beta</button>
+          <button id="btn-pub-beta" onclick="window.publishRelease(true)" class="btn-purple" style="width: 100%; margin-top: 8px;">⚡ Опубликовать Beta</button>
         </div>
 
       </div>
@@ -442,7 +441,7 @@ const DASHBOARD_HTML = `<!doctype html>
       <div class="card">
         <div class="card-header">
           <h2>✨ Активная косметика и аватары</h2>
-          <button id="btn-refresh-cosmetics" class="btn-blue btn-sm">🔄 Обновить</button>
+          <button id="btn-refresh-cosmetics" onclick="window.loadCosmetics()" class="btn-blue btn-sm">🔄 Обновить</button>
         </div>
         <pre id="cosmetics-json" class="code-box">Загрузка данных косметики...</pre>
       </div>
@@ -451,7 +450,7 @@ const DASHBOARD_HTML = `<!doctype html>
       <div class="card">
         <div class="card-header">
           <h2>📍 Метки игроков на серверах</h2>
-          <button id="btn-refresh-markers" class="btn-blue btn-sm">🔄 Обновить</button>
+          <button id="btn-refresh-markers" onclick="window.loadMarkers()" class="btn-blue btn-sm">🔄 Обновить</button>
         </div>
         <pre id="markers-json" class="code-box">Загрузка меток...</pre>
       </div>
@@ -461,8 +460,8 @@ const DASHBOARD_HTML = `<!doctype html>
   </div>
 
   <script>
-    // Universal Toast Notification
-    function showToast(msg, type) {
+    // Global Toast
+    window.showToast = function(msg, type) {
       type = type || 'info';
       var container = document.getElementById('toast-container');
       if (!container) return;
@@ -474,17 +473,17 @@ const DASHBOARD_HTML = `<!doctype html>
         t.style.opacity = '0';
         setTimeout(function() { t.remove(); }, 300);
       }, 3500);
-    }
+    };
 
-    function refreshAll() {
-      showToast('Обновление данных...', 'info');
-      loadUsers();
-      loadVersionData();
-      loadCosmetics();
-      loadMarkers();
-    }
+    window.refreshAll = function() {
+      window.showToast('Обновление данных...', 'info');
+      window.loadUsers();
+      window.loadVersionData();
+      window.loadCosmetics();
+      window.loadMarkers();
+    };
 
-    function createAccountDirectly() {
+    window.createAccountDirectly = function() {
       var nickInput = document.getElementById('create-nick');
       var emailInput = document.getElementById('create-email');
       var pwdInput = document.getElementById('create-pwd');
@@ -497,12 +496,12 @@ const DASHBOARD_HTML = `<!doctype html>
       var role = roleInput ? roleInput.value : 'user';
 
       if (!nick) {
-        showToast('Введите никнейм!', 'error');
+        window.showToast('Введите никнейм!', 'error');
         alert('Введите никнейм!');
         return;
       }
       if (!pwd) {
-        showToast('Введите пароль!', 'error');
+        window.showToast('Введите пароль!', 'error');
         alert('Введите пароль!');
         return;
       }
@@ -526,24 +525,24 @@ const DASHBOARD_HTML = `<!doctype html>
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ nickname: nick, role: role })
-            }).then(function() { loadUsers(); });
+            }).then(function() { window.loadUsers(); });
           }
-          showToast('Аккаунт ' + nick + ' успешно создан!', 'success');
+          window.showToast('Аккаунт ' + nick + ' успешно создан!', 'success');
           alert('Аккаунт ' + nick + ' успешно создан!');
-          loadUsers();
+          window.loadUsers();
         } else {
-          showToast('Ошибка: ' + (res.error || 'Не удалось создать'), 'error');
+          window.showToast('Ошибка: ' + (res.error || 'Не удалось создать'), 'error');
           alert('Ошибка: ' + (res.error || 'Не удалось создать'));
         }
       })
       .catch(function(err) {
         if (btn) btn.textContent = '➕ Создать аккаунт';
-        showToast('Сетевая ошибка: ' + err.message, 'error');
+        window.showToast('Сетевая ошибка: ' + err.message, 'error');
         alert('Сетевая ошибка: ' + err.message);
       });
-    }
+    };
 
-    function loadUsers() {
+    window.loadUsers = function() {
       var tbody = document.getElementById('users-table-body');
       var badge = document.getElementById('user-count-badge');
       if (!tbody) return;
@@ -564,32 +563,32 @@ const DASHBOARD_HTML = `<!doctype html>
             var nick = u.nickname || 'Unknown';
             var email = u.email || '—';
             var role = u.role || 'user';
-            var hwidShort = u.hwid ? escapeHtml(u.hwid.substring(0, 16)) + '...' : '—';
+            var hwidShort = u.hwid ? window.escapeHtml(u.hwid.substring(0, 16)) + '...' : '—';
             var badgeClass = 'badge-' + role;
             var statusBadge = u.banned 
-              ? '<span class="badge badge-banned">ЗАБАНЕН (' + escapeHtml(u.banReason || 'Бан') + ')</span>' 
+              ? '<span class="badge badge-banned">ЗАБАНЕН (' + window.escapeHtml(u.banReason || 'Бан') + ')</span>' 
               : '<span class="badge badge-active">АКТИВЕН</span>';
 
             var roleButtons = '<div class="actions-group">';
             if (role !== 'beta') {
-              roleButtons += '<button class="btn-purple btn-sm" onclick="setRole(\'' + escapeHtml(nick) + '\', \'beta\')">✨ Выдать Beta</button>';
+              roleButtons += '<button class="btn-purple btn-sm" onclick="window.setRole(\'' + window.escapeHtml(nick) + '\', \'beta\')">✨ Выдать Beta</button>';
             } else {
-              roleButtons += '<button class="btn-blue btn-sm" onclick="setRole(\'' + escapeHtml(nick) + '\', \'user\')">Снять Beta</button>';
+              roleButtons += '<button class="btn-blue btn-sm" onclick="window.setRole(\'' + window.escapeHtml(nick) + '\', \'user\')">Снять Beta</button>';
             }
             if (role !== 'owner') {
-              roleButtons += '<button class="btn-primary btn-sm" onclick="setRole(\'' + escapeHtml(nick) + '\', \'owner\')">👑 Owner</button>';
+              roleButtons += '<button class="btn-primary btn-sm" onclick="window.setRole(\'' + window.escapeHtml(nick) + '\', \'owner\')">👑 Owner</button>';
             }
             if (u.banned) {
-              roleButtons += '<button class="btn-primary btn-sm" onclick="unban(\'' + escapeHtml(nick) + '\')">✅ Разбанить</button>';
+              roleButtons += '<button class="btn-primary btn-sm" onclick="window.unban(\'' + window.escapeHtml(nick) + '\')">✅ Разбанить</button>';
             } else {
-              roleButtons += '<button class="btn-danger btn-sm" onclick="quickBan(\'' + escapeHtml(nick) + '\')">🚫 Бан</button>';
+              roleButtons += '<button class="btn-danger btn-sm" onclick="window.quickBan(\'' + window.escapeHtml(nick) + '\')">🚫 Бан</button>';
             }
             roleButtons += '</div>';
 
             html += '<tr>' +
-              '<td><strong>' + escapeHtml(nick) + '</strong></td>' +
-              '<td>' + escapeHtml(email) + '</td>' +
-              '<td><span class="badge ' + badgeClass + '">' + escapeHtml(role) + '</span></td>' +
+              '<td><strong>' + window.escapeHtml(nick) + '</strong></td>' +
+              '<td>' + window.escapeHtml(email) + '</td>' +
+              '<td><span class="badge ' + badgeClass + '">' + window.escapeHtml(role) + '</span></td>' +
               '<td class="mono">' + hwidShort + '</td>' +
               '<td>' + statusBadge + '</td>' +
               '<td>' + roleButtons + '</td>' +
@@ -600,9 +599,9 @@ const DASHBOARD_HTML = `<!doctype html>
         .catch(function(err) {
           console.error('loadUsers error:', err);
         });
-    }
+    };
 
-    function setRole(nick, role) {
+    window.setRole = function(nick, role) {
       fetch('/api/user/set-role', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -611,29 +610,29 @@ const DASHBOARD_HTML = `<!doctype html>
       .then(function(res) { return res.json(); })
       .then(function(data) {
         if (data.success) {
-          showToast('Роль игрока ' + nick + ' изменена на ' + role, 'success');
+          window.showToast('Роль игрока ' + nick + ' изменена на ' + role, 'success');
           alert('Роль игрока ' + nick + ' изменена на ' + role);
-          loadUsers();
+          window.loadUsers();
         } else {
-          showToast('Ошибка: ' + (data.error || 'Не удалось сменить роль'), 'error');
+          window.showToast('Ошибка: ' + (data.error || 'Не удалось сменить роль'), 'error');
           alert('Ошибка: ' + (data.error || 'Не удалось сменить роль'));
         }
       });
-    }
+    };
 
-    function unban(nick) {
+    window.unban = function(nick) {
       fetch('/api/user/unban', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nickname: nick })
       }).then(function() {
-        showToast('Игрок ' + nick + ' разбанен!', 'success');
+        window.showToast('Игрок ' + nick + ' разбанен!', 'success');
         alert('Игрок ' + nick + ' разбанен!');
-        loadUsers();
+        window.loadUsers();
       });
-    }
+    };
 
-    function quickBan(nick) {
+    window.quickBan = function(nick) {
       var reason = prompt('Причина бана для игрока ' + nick + ':', 'Нарушение правил');
       if (reason) {
         fetch('/api/user/ban', {
@@ -641,14 +640,14 @@ const DASHBOARD_HTML = `<!doctype html>
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ nickname: nick, reason: reason })
         }).then(function() {
-          showToast('Игрок ' + nick + ' забанен по HWID', 'error');
+          window.showToast('Игрок ' + nick + ' забанен по HWID', 'error');
           alert('Игрок ' + nick + ' забанен по HWID');
-          loadUsers();
+          window.loadUsers();
         });
       }
-    }
+    };
 
-    function submitBan() {
+    window.submitBan = function() {
       var nickInput = document.getElementById('ban-input-nick');
       var reasonInput = document.getElementById('ban-input-reason');
       var nick = nickInput ? nickInput.value.trim() : '';
@@ -656,7 +655,7 @@ const DASHBOARD_HTML = `<!doctype html>
       var btn = document.getElementById('btn-ban-action');
 
       if (!nick) {
-        showToast('Введите никнейм игрока для бана!', 'error');
+        window.showToast('Введите никнейм игрока для бана!', 'error');
         alert('Введите никнейм игрока для бана!');
         return;
       }
@@ -672,23 +671,23 @@ const DASHBOARD_HTML = `<!doctype html>
       .then(function(data) {
         if (btn) btn.textContent = '🚫 Забанить (Аккаунт + HWID)';
         if (data.success) {
-          showToast(data.message, 'success');
+          window.showToast(data.message, 'success');
           alert(data.message);
           if (nickInput) nickInput.value = '';
-          loadUsers();
+          window.loadUsers();
         } else {
-          showToast('Ошибка: ' + (data.error || 'Не удалось забанить'), 'error');
+          window.showToast('Ошибка: ' + (data.error || 'Не удалось забанить'), 'error');
           alert('Ошибка: ' + (data.error || 'Не удалось забанить'));
         }
       })
       .catch(function(e) {
         if (btn) btn.textContent = '🚫 Забанить (Аккаунт + HWID)';
-        showToast('Ошибка: ' + e.message, 'error');
+        window.showToast('Ошибка: ' + e.message, 'error');
         alert('Ошибка: ' + e.message);
       });
-    }
+    };
 
-    function loadVersionData() {
+    window.loadVersionData = function() {
       fetch('/api/loader/version')
         .then(function(res) { return res.json(); })
         .then(function(v) {
@@ -706,9 +705,9 @@ const DASHBOARD_HTML = `<!doctype html>
           if (statV) statV.textContent = v.version || '1.21.11';
           if (statBV) statBV.textContent = v.betaVersion || '1.21.11-beta';
         });
-    }
+    };
 
-    function publishRelease(isBeta) {
+    window.publishRelease = function(isBeta) {
       var verInput = document.getElementById(isBeta ? 'ota-beta-version' : 'ota-release-version');
       var logInput = document.getElementById(isBeta ? 'ota-beta-changelog' : 'ota-release-changelog');
       var fileInput = document.getElementById(isBeta ? 'ota-beta-file' : 'ota-release-file');
@@ -718,7 +717,7 @@ const DASHBOARD_HTML = `<!doctype html>
       var changelog = logInput ? logInput.value.trim() : '';
 
       if (!version) {
-        showToast('Укажите версию обновления!', 'error');
+        window.showToast('Укажите версию обновления!', 'error');
         alert('Укажите версию обновления!');
         return;
       }
@@ -743,71 +742,54 @@ const DASHBOARD_HTML = `<!doctype html>
               body: buffer
             }).then(function() {
               if (btn) btn.textContent = isBeta ? '⚡ Опубликовать Beta' : '🚀 Опубликовать Релиз';
-              showToast((isBeta ? 'Beta' : 'Релизное') + ' обновление с JAR файлом успешно опубликовано!', 'success');
+              window.showToast((isBeta ? 'Beta' : 'Релизное') + ' обновление с JAR файлом успешно опубликовано!', 'success');
               alert((isBeta ? 'Beta' : 'Релизное') + ' обновление с JAR файлом успешно опубликовано!');
-              loadVersionData();
+              window.loadVersionData();
             });
           };
           reader.readAsArrayBuffer(file);
         } else {
           if (btn) btn.textContent = isBeta ? '⚡ Опубликовать Beta' : '🚀 Опубликовать Релиз';
-          showToast((isBeta ? 'Beta' : 'Релизное') + ' обновление опубликовано (версия обновлена)!', 'success');
+          window.showToast((isBeta ? 'Beta' : 'Релизное') + ' обновление опубликовано (версия обновлена)!', 'success');
           alert((isBeta ? 'Beta' : 'Релизное') + ' обновление опубликовано (версия обновлена)!');
-          loadVersionData();
+          window.loadVersionData();
         }
       })
       .catch(function(err) {
         if (btn) btn.textContent = isBeta ? '⚡ Опубликовать Beta' : '🚀 Опубликовать Релиз';
-        showToast('Ошибка публикации: ' + err.message, 'error');
+        window.showToast('Ошибка публикации: ' + err.message, 'error');
         alert('Ошибка публикации: ' + err.message);
       });
-    }
+    };
 
-    function loadCosmetics() {
+    window.loadCosmetics = function() {
       var box = document.getElementById('cosmetics-json');
       if (!box) return;
       fetch('/api/cosmetics/all')
         .then(function(res) { return res.json(); })
         .then(function(data) { box.textContent = JSON.stringify(data, null, 2); })
         .catch(function(e) { box.textContent = 'Ошибка загрузки: ' + e.message; });
-    }
+    };
 
-    function loadMarkers() {
+    window.loadMarkers = function() {
       var box = document.getElementById('markers-json');
       if (!box) return;
       fetch('/api/markers')
         .then(function(res) { return res.json(); })
         .then(function(data) { box.textContent = JSON.stringify(data, null, 2); })
         .catch(function(e) { box.textContent = 'Ошибка загрузки: ' + e.message; });
-    }
+    };
 
-    function escapeHtml(str) {
+    window.escapeHtml = function(str) {
       return (str || '').replace(/[&<>"']/g, function(m) {
         return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
       });
-    }
-
-    // Direct Event Listeners
-    document.addEventListener('DOMContentLoaded', function() {
-      document.getElementById('btn-top-refresh')?.addEventListener('click', refreshAll);
-      document.getElementById('btn-refresh-users')?.addEventListener('click', loadUsers);
-      document.getElementById('btn-create-acc')?.addEventListener('click', createAccountDirectly);
-      document.getElementById('btn-ban-action')?.addEventListener('click', submitBan);
-      document.getElementById('btn-refresh-ota')?.addEventListener('click', loadVersionData);
-      document.getElementById('btn-pub-release')?.addEventListener('click', function() { publishRelease(false); });
-      document.getElementById('btn-pub-beta')?.addEventListener('click', function() { publishRelease(true); });
-      document.getElementById('btn-refresh-cosmetics')?.addEventListener('click', loadCosmetics);
-      document.getElementById('btn-refresh-markers')?.addEventListener('click', loadMarkers);
-
-      loadUsers();
-      loadVersionData();
-      setInterval(loadUsers, 2500);
-    });
-
-    window.onload = function() {
-      loadUsers();
-      loadVersionData();
     };
+
+    // Immediate Initialization on load
+    window.loadUsers();
+    window.loadVersionData();
+    setInterval(window.loadUsers, 2500);
   </script>
 </body>
 </html>`;
@@ -1184,5 +1166,5 @@ app.post('/api/markers', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[StarlyServer] Running on port ${PORT} with Guaranteed Click Handlers`);
+  console.log(`[StarlyServer] Running on port ${PORT} with Global Window Click Bindings`);
 });
