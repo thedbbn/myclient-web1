@@ -21,6 +21,12 @@ app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 app.use(express.raw({ type: 'application/octet-stream', limit: '150mb' }));
 
+// Static files for Web Dashboard
+const PUBLIC_DIR = path.join(__dirname, 'public');
+if (fs.existsSync(PUBLIC_DIR)) {
+  app.use(express.static(PUBLIC_DIR));
+}
+
 const DATA_FILE = path.join(__dirname, 'data.json');
 const MARKERS_FILE = path.join(__dirname, 'markers.json');
 const ACCOUNTS_FILE = path.join(__dirname, 'accounts.json');
@@ -117,7 +123,6 @@ function verifyToken(token) {
     const expectedSig = crypto.createHmac('sha256', PASSWORD_SALT).update(payload).digest('hex');
     if (sig !== expectedSig) return null;
     
-    // Check if account still exists and is not banned
     const acc = Object.values(accounts).find(a => a.email.toLowerCase() === email.toLowerCase());
     return acc || null;
   } catch (e) {
@@ -125,9 +130,18 @@ function verifyToken(token) {
   }
 }
 
+// Serve Web Dashboard on GET /
+app.get('/', (req, res) => {
+  const indexHtml = path.join(PUBLIC_DIR, 'index.html');
+  if (fs.existsSync(indexHtml)) {
+    res.sendFile(indexHtml);
+  } else {
+    res.json({ name: 'Starly Client API Server', status: 'online', accounts: Object.keys(accounts).length });
+  }
+});
+
 // ==================== AUTH & REGISTRATION API ====================
 
-// 1. Регистрация по почте, нику и паролю
 app.post('/api/auth/register', (req, res) => {
   const { email, nickname, password, hwid } = req.body;
   if (!email || !nickname || !password) {
@@ -138,7 +152,6 @@ app.post('/api/auth/register', (req, res) => {
   const cleanNick = nickname.trim();
   const cleanHwid = (hwid || '').trim().toLowerCase();
 
-  // Email format check
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(cleanEmail)) {
     return res.status(400).json({ success: false, error: 'Введите корректный адрес электронной почты' });
@@ -152,7 +165,6 @@ app.post('/api/auth/register', (req, res) => {
     return res.status(400).json({ success: false, error: 'Пароль должен содержать минимум 4 символа' });
   }
 
-  // Check HWID Ban
   if (isHwidBanned(cleanHwid)) {
     return res.status(403).json({
       success: false,
@@ -161,12 +173,10 @@ app.post('/api/auth/register', (req, res) => {
     });
   }
 
-  // Check unique email
   if (accounts[cleanEmail]) {
     return res.status(400).json({ success: false, error: 'Пользователь с такой почтой уже зарегистрирован' });
   }
 
-  // Check unique nickname
   const nickExists = Object.values(accounts).some(a => a.nickname.toLowerCase() === cleanNick.toLowerCase());
   if (nickExists) {
     return res.status(400).json({ success: false, error: 'Этот никнейм уже занят другим игроком' });
@@ -178,7 +188,7 @@ app.post('/api/auth/register', (req, res) => {
     nickname: cleanNick,
     passwordHash: hashPassword(password),
     hwid: cleanHwid,
-    role: isFirstAccount ? 'owner' : 'user', // Первый пользователь становится владельцем
+    role: isFirstAccount ? 'owner' : 'user',
     customEarlyAccess: false,
     banned: false,
     banReason: '',
@@ -202,7 +212,6 @@ app.post('/api/auth/register', (req, res) => {
   });
 });
 
-// 2. Вход по почте/нику и паролю
 app.post('/api/auth/login', (req, res) => {
   const { emailOrNick, password, hwid } = req.body;
   if (!emailOrNick || !password) {
@@ -212,7 +221,6 @@ app.post('/api/auth/login', (req, res) => {
   const query = emailOrNick.trim().toLowerCase();
   const cleanHwid = (hwid || '').trim().toLowerCase();
 
-  // Check HWID Ban
   if (isHwidBanned(cleanHwid)) {
     return res.status(403).json({
       success: false,
@@ -221,7 +229,6 @@ app.post('/api/auth/login', (req, res) => {
     });
   }
 
-  // Find account
   const acc = Object.values(accounts).find(a => 
     a.email.toLowerCase() === query || a.nickname.toLowerCase() === query
   );
@@ -242,7 +249,6 @@ app.post('/api/auth/login', (req, res) => {
     });
   }
 
-  // Update HWID & last login
   if (cleanHwid) {
     acc.hwid = cleanHwid;
   }
@@ -262,7 +268,6 @@ app.post('/api/auth/login', (req, res) => {
   });
 });
 
-// 3. Проверка активной сессии (верификация токена и HWID)
 app.get('/api/auth/verify', (req, res) => {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.replace(/^Bearer\s+/i, '') || req.query.token;
@@ -356,6 +361,18 @@ app.post('/api/user/unban', (req, res) => {
 
   saveAccounts();
   res.json({ success: true, message: `Пользователь ${acc.nickname} разбанен`, user: acc });
+});
+
+// Admin: Set Role
+app.post('/api/user/set-role', (req, res) => {
+  const { nickname, role } = req.body;
+  const acc = Object.values(accounts).find(a => a.nickname.toLowerCase() === (nickname || '').toLowerCase());
+  if (!acc || !['user', 'beta', 'owner'].includes(role)) {
+    return res.status(400).json({ error: 'Неверные параметры' });
+  }
+  acc.role = role;
+  saveAccounts();
+  res.json({ success: true, user: acc });
 });
 
 // Admin: List all accounts
@@ -454,10 +471,6 @@ app.get('/api/loader/download-beta', (req, res) => {
   }
 });
 
-app.get('/api/player/test', (req, res) => {
-  res.json({ status: 'ok', time: Date.now() });
-});
-
 app.listen(PORT, () => {
-  console.log(`[StarlyServer] Running on port ${PORT} with Email Auth & HWID Ban Protection`);
+  console.log(`[StarlyServer] Running on port ${PORT} with Web Dashboard, Email Auth & HWID Protection`);
 });
